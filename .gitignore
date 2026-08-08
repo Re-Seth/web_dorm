@@ -1,13 +1,26 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
 .env.*
 !.env.example
 
+# Build files
 dist/
 build/
 
+# Vite
 .vite/
-*.log
 
+# AI / Editor generated files
 .claude/
 .windsurf/
+.agents/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
