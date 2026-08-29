@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -6,10 +8,22 @@ const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app); // ใช้ร่วมกับ Socket.io
 const prisma = new PrismaClient();
+
+// ตั้งค่า Socket.io สำหรับ Real-time
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PATCH']
+  }
+});
 
 app.use(cors());
 app.use(express.json());
+
+// ค่าเริ่มต้นสำหรับ JWT Secret กรณีไม่ได้ตั้งใน .env
+const JWT_SECRET = process.env.JWT_SECRET || 'dorm_secret_key_1234';
 
 // ==========================================
 // Middleware: ตรวจสอบ JWT Token
@@ -22,7 +36,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access Token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
@@ -72,7 +86,7 @@ app.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '1d' }
     );
 
@@ -88,7 +102,6 @@ app.post('/login', async (req, res) => {
 
 // POST /logout - ออกจากระบบ
 app.post('/logout', authenticateToken, (req, res) => {
-  // ฝั่ง Client ให้ลบ Token ออกจาก LocalStorage / Cookies
   res.json({ message: 'Logout successful' });
 });
 
@@ -157,7 +170,7 @@ app.get('/check-username/:name', async (req, res) => {
   }
 });
 
-// GET /users - ดึงข้อมูล user ทั้งหมด (Pagination)
+// GET /users - ดึงข้อมูล user ทั้งหมด
 app.get('/users', authenticateToken, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -212,7 +225,6 @@ app.put('/users/:id', authenticateToken, async (req, res) => {
     const id = parseInt(req.params.id);
     const { name, email, role } = req.body;
 
-    // อนุญาตเฉพาะแก้ไขตัวเอง หรือผู้ใช้ระดับ ADMIN
     if (req.user.id !== id && req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Forbidden: You can only update your own profile' });
     }
@@ -237,7 +249,6 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
 
-    // อนุญาตเฉพาะ ADMIN หรือเจ้าของบัญชีลบได้
     if (req.user.id !== id && req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Forbidden: You can only delete your own account' });
     }
@@ -253,8 +264,93 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Start Server
+// ==========================================
+// 3. Maintenance (แจ้งซ่อม) Endpoints
+// ==========================================
+
+// GET /api/maintenance - ดึงรายการแจ้งซ่อมทั้งหมด
+app.get('/api/maintenance', async (req, res) => {
+  try {
+    const requests = await prisma.maintenanceRequest.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch maintenance requests', error: err.message });
+  }
+});
+
+// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่
+app.post('/api/maintenance', async (req, res) => {
+  try {
+    const { roomId, userId, title, description } = req.body;
+    const newRequest = await prisma.maintenanceRequest.create({
+      data: {
+        roomId: Number(roomId),
+        userId: Number(userId || 1),
+        title,
+        description,
+        status: 'PENDING'
+      }
+    });
+    res.status(201).json(newRequest);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to create request', error: err.message });
+  }
+});
+
+// PATCH /api/maintenance/:id/status - อัปเดตสถานะการแจ้งซ่อม
+app.patch('/api/maintenance/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const updated = await prisma.maintenanceRequest.update({
+      where: { id: Number(id) },
+      data: { status }
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update status', error: err.message });
+  }
+});
+
+// ==========================================
+// 4. Real-time Power Monitoring (Socket.io)
+// ==========================================
+
+let accumulatedUnits = 142.5; // หน่วยไฟสะสมเริ่มต้น (kWh)
+const UNIT_RATE = 7.0;        // ค่าไฟหน่วยละ 7 บาท
+
+// จำลองการอ่านค่ามิเตอร์ไฟฟ้าทุก 3 วินาที
+setInterval(() => {
+  const current = +(Math.random() * 4.5 + 0.5).toFixed(2);
+  const voltage = +(218 + Math.random() * 5).toFixed(1);
+  const power = +((voltage * current) / 1000).toFixed(3); // kW
+  
+  accumulatedUnits += +(power * (3 / 3600)).toFixed(4);
+  const estimatedCost = +(accumulatedUnits * UNIT_RATE).toFixed(2);
+
+  const powerData = {
+    roomId: 101,
+    voltage,
+    current,
+    power: +(power * 1000).toFixed(0), // Watt
+    energyUnits: +accumulatedUnits.toFixed(2),
+    estimatedCost,
+    timestamp: new Date().toLocaleTimeString()
+  };
+
+  io.emit('power_update', powerData);
+}, 3000);
+
+io.on('connection', (socket) => {
+  console.log('⚡ Client connected to Real-time Power feed:', socket.id);
+});
+
+// ==========================================
+// Start Server (ใช้ server.listen แทน app.listen เพื่อรองรับ WebSocket)
+// ==========================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Backend Server running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Backend Server running on http://localhost:${PORT}`);
 });

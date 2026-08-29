@@ -8,6 +8,7 @@ import Receipt from './pages/Receipt'
 import FeedbackReview from './pages/FeedbackReview'
 import MainLayout from './components/Layout/MainLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import DormServices from './DormServices' // นำเข้า Component บริการค่าไฟและแจ้งซ่อม
 
 export default function App() {
   return (
@@ -29,6 +30,11 @@ export default function App() {
         <Route path="payment" element={<Payment />} />
         <Route path="receipt" element={<Receipt />} />
         <Route path="review" element={<FeedbackReview />} />
+        
+        {/* Route เพิ่มเติมสำหรับระบบค่าไฟและการแจ้งซ่อม */}
+        <Route path="services" element={<DormServices />} />
+        <Route path="power" element={<DormServices />} />
+        <Route path="maintenance" element={<DormServices />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

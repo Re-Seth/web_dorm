@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,4 +16,28 @@ model User {
   role      String   @default("USER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ข้อมูลการใช้ไฟฟ้า (รองรับ Real-time)
+model PowerUsage {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  voltage     Float    // แรงดันไฟฟ้า (V)
+  current     Float    // กระแสไฟฟ้า (A)
+  power       Float    // กำลังไฟฟ้า (Watt / kW)
+  energyUnits Float    // หน่วยสะสม (kWh)
+  recordedAt  DateTime @default(now())
+}
+
+// ข้อมูลแจ้งซ่อม
+model MaintenanceRequest {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  userId      Int
+  title       String   // เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว
+  description String   // รายละเอียด
+  imageUrl    String?  // รูปภาพประกอบ
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
