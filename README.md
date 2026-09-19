@@ -61,11 +61,11 @@ web_dorm/
 ```
 ## สถาปัตยกรรมระบบ
 
-![Architecture](./docs/images/architecture.png)
+![Architecture](./images/architecture.png)
 
 ## Technology Stack
 
-![Tech Stack](./docs/images/tech-stack.png)
+![Tech Stack](./images/tech-stack.png)
 > รายละเอียดโครงสร้าง frontend แบบเจาะลึกดูเพิ่มเติมได้ที่ [`dorm-registration/README.md`](./dorm-registration/README.md)
 
 ---
