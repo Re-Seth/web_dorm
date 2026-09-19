@@ -59,7 +59,13 @@ web_dorm/
     └── prisma/
         └── schema.prisma          # Models: User, PowerUsage, MaintenanceRequest
 ```
+## สถาปัตยกรรมระบบ
 
+![Architecture](./docs/images/architecture.png)
+
+## Technology Stack
+
+![Tech Stack](./docs/images/tech-stack.png)
 > รายละเอียดโครงสร้าง frontend แบบเจาะลึกดูเพิ่มเติมได้ที่ [`dorm-registration/README.md`](./dorm-registration/README.md)
 
 ---
