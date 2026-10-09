@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io('http://localhost:5000');
-const API_URL = 'http://localhost:5000/api/maintenance';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const socket = io(API_BASE);
+const API_URL = `${API_BASE}/api/maintenance`;
 
 export default function DormServices() {
   const [power, setPower] = useState({
