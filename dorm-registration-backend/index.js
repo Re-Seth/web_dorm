@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 const io = new Server(server, {
   cors: {
     origin: '*',
-    methods: ['GET', 'POST', 'PATCH']
+    methods: ['GET', 'POST', 'PATCH', 'DELETE']
   }
 });
 
@@ -313,6 +313,11 @@ app.patch('/api/maintenance/:id/status', async (req, res) => {
     res.status(500).json({ message: 'Failed to update status', error: err.message });
   }
 });
+
+// ==========================================
+// 5. Admin API (ระบบหลังบ้าน) — ดูรายละเอียดใน adminRoutes.js
+// ==========================================
+require('./adminRoutes')({ app, prisma, authenticateToken });
 
 // ==========================================
 // 4. Real-time Power Monitoring (Socket.io)

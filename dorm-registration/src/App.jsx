@@ -9,6 +9,13 @@ import FeedbackReview from './pages/FeedbackReview'
 import MainLayout from './components/Layout/MainLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import DormServices from './DormServices' // นำเข้า Component บริการค่าไฟและแจ้งซ่อม
+import AdminLogin from './admin/AdminLogin'
+import AdminLayout from './admin/AdminLayout'
+import Overview from './admin/pages/Overview'
+import AdminRooms from './admin/pages/Rooms'
+import AdminBookings from './admin/pages/Bookings'
+import AdminMaintenance from './admin/pages/Maintenance'
+import AdminUsers from './admin/pages/Users'
 
 export default function App() {
   return (
@@ -35,6 +42,16 @@ export default function App() {
         <Route path="services" element={<DormServices />} />
         <Route path="power" element={<DormServices />} />
         <Route path="maintenance" element={<DormServices />} />
+      </Route>
+
+      {/* ระบบหลังบ้านสำหรับผู้ดูแล (ต้องล็อกอินด้วยบัญชี role = ADMIN) */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<Overview />} />
+        <Route path="rooms" element={<AdminRooms />} />
+        <Route path="bookings" element={<AdminBookings />} />
+        <Route path="maintenance" element={<AdminMaintenance />} />
+        <Route path="users" element={<AdminUsers />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

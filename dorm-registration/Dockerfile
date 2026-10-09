@@ -3,20 +3,22 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# คัดลอก package.json และ package-lock.json
 COPY package*.json ./
 
-# เปลี่ยนตรงนี้: ใช้ npm install หรือ npm ci --include=dev เพื่อบังคับติดตั้ง devDependencies (เช่น vite)
+# ใช้ npm install เพื่อติดตั้ง devDependencies ด้วย (เช่น vite)
 RUN npm install
 
-# คัดลอก source code
 COPY . .
 
-# Build โปรเจกต์
+# URL ของ backend ที่เบราว์เซอร์เรียกใช้ (ฝังตอน build)
+ARG VITE_API_URL=http://localhost:5000
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
 # Stage 2: Serve ด้วย Nginx
 FROM nginx:alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

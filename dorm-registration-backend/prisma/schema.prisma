@@ -41,3 +41,41 @@ model MaintenanceRequest {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ==========================================
+// ส่วนเพิ่มสำหรับระบบหลังบ้าน (Admin)
+// ==========================================
+
+// ห้องพัก (dormId ตรงกับ id ใน frontend: tt1..tt4)
+model Room {
+  id        Int       @id @default(autoincrement())
+  dormId    String
+  floor     Int
+  code      String    @unique   // เช่น A101
+  capacity  Int       @default(4)
+  status    String    @default("AVAILABLE") // AVAILABLE, MAINTENANCE, CLOSED
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// การจอง + การชำระเงิน
+model Booking {
+  id            Int       @id @default(autoincrement())
+  roomId        Int
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId        Int?
+  studentName   String
+  studentCode   String?
+  phone         String?
+  parentName    String?
+  parentPhone   String?
+  status        String    @default("PENDING") // PENDING, CONFIRMED, CANCELLED
+  paymentStatus String    @default("UNPAID")  // UNPAID, PAID
+  paymentAmount Int       @default(1999)
+  paymentMethod String?
+  receiptNo     String?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
