@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
-import axios from 'axios';
+import api, { API_BASE_URL, maintenanceApi, powerApi } from './services/api';
+import { useRegistration } from './context/RegistrationContext';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const socket = io(API_BASE);
-const API_URL = `${API_BASE}/api/maintenance`;
+const socket = io(API_BASE_URL);
 
 export default function DormServices() {
+  const { booking } = useRegistration();
   const [power, setPower] = useState({
     voltage: 220,
     current: 0,
@@ -19,7 +19,9 @@ export default function DormServices() {
   const [requests, setRequests] = useState([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [roomId, setRoomId] = useState(101);
+  const [roomId, setRoomId] = useState(booking?.room?.floor ? `${booking.room.floor}01` : '101');
+  const [recentPowerLogs, setRecentPowerLogs] = useState([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     socket.on('power_update', (data) => {
@@ -27,6 +29,7 @@ export default function DormServices() {
     });
 
     fetchRequests();
+    fetchPowerHistory();
 
     return () => {
       socket.off('power_update');
@@ -35,10 +38,19 @@ export default function DormServices() {
 
   const fetchRequests = async () => {
     try {
-      const res = await axios.get(API_URL);
+      const res = await maintenanceApi.getAll();
       setRequests(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchPowerHistory = async () => {
+    try {
+      const res = await powerApi.getHistory();
+      if (res.data) setRecentPowerLogs(res.data);
+    } catch (err) {
+      // non-blocking
     }
   };
 
@@ -46,7 +58,7 @@ export default function DormServices() {
     e.preventDefault();
     if (!title || !description) return;
     try {
-      await axios.post(API_URL, { roomId, title, description });
+      await maintenanceApi.create({ roomId: Number(roomId) || 101, title, description });
       setTitle('');
       setDescription('');
       fetchRequests();
@@ -57,7 +69,7 @@ export default function DormServices() {
 
   const handleUpdateStatus = async (id, status) => {
     try {
-      await axios.patch(`${API_URL}/${id}/status`, { status });
+      await maintenanceApi.updateStatus(id, status);
       fetchRequests();
     } catch (err) {
       alert('ไม่สามารถอัปเดตสถานะได้');
@@ -108,6 +120,48 @@ export default function DormServices() {
             <h3 style={{ fontSize: 24, margin: '8px 0', color: '#4ade80', fontWeight: 'bold' }}>{power.estimatedCost} ฿</h3>
           </div>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: '1px solid #334155', flexWrap: 'wrap', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => { setShowLogs(!showLogs); fetchPowerHistory(); }}
+            style={{ background: '#334155', color: '#f8fafc', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            📊 {showLogs ? 'ซ่อนประวัติ' : 'ดูประวัติที่บันทึกลง SQLite'} ({recentPowerLogs.length} รายการ)
+          </button>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>
+            * ข้อมูล Real-time ส่งผ่าน Socket.io และบันทึกลง SQLite อัตโนมัติทุก 30 วินาที
+          </span>
+        </div>
+
+        {showLogs && (
+          <div style={{ marginTop: 14, background: '#0b1120', borderRadius: 8, padding: 12, maxHeight: 220, overflowY: 'auto', border: '1px solid #1e293b' }}>
+            {recentPowerLogs.length === 0 ? (
+              <p style={{ margin: 0, color: '#64748b', fontSize: 13, textAlign: 'center' }}>กำลังรอรอบการบันทึกข้อมูล...</p>
+            ) : (
+              <table style={{ width: '100%', fontSize: 12, textAlign: 'left', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ color: '#94a3b8', borderBottom: '1px solid #334155' }}>
+                    <th style={{ padding: '6px 8px' }}>เวลาบันทึก (SQLite)</th>
+                    <th style={{ padding: '6px 8px' }}>กำลังไฟฟ้า</th>
+                    <th style={{ padding: '6px 8px' }}>แรงดัน / กระแส</th>
+                    <th style={{ padding: '6px 8px' }}>หน่วยสะสม</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentPowerLogs.map((log) => (
+                    <tr key={log.id} style={{ borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>
+                      <td style={{ padding: '6px 8px' }}>{new Date(log.recordedAt).toLocaleTimeString()}</td>
+                      <td style={{ padding: '6px 8px', color: '#38bdf8', fontWeight: 'bold' }}>{log.power} W</td>
+                      <td style={{ padding: '6px 8px' }}>{log.voltage}V / {log.current}A</td>
+                      <td style={{ padding: '6px 8px', color: '#facc15' }}>{log.energyUnits} kWh</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ส่วนแจ้งซ่อม */}
@@ -162,7 +216,7 @@ export default function DormServices() {
         {/* รายการแจ้งซ่อม */}
         <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: 24, borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
           <h3 style={{ marginTop: 0, marginBottom: 18, fontSize: 20, color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
-            📋 รายการแจ้งซ่อม
+            📋 รายการแจ้งซ่อม (จาก SQLite)
           </h3>
           {requests.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>

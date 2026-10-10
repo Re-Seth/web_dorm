@@ -1,60 +1,101 @@
 import { NavLink } from 'react-router-dom'
-import { useRegistration } from '../../context/RegistrationContext'
+import {
+  LayoutDashboard,
+  UserPlus,
+  BedDouble,
+  CreditCard,
+  ReceiptText,
+  Star,
+  Zap,
+  ShieldCheck
+} from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
-const linkBase =
-  'flex items-center gap-3 px-4 py-2.5 rounded-md text-sm transition-colors border-l-2 border-transparent'
-const linkActive = 'bg-charcoal-soft text-gold border-gold'
-const linkInactive = 'text-bone/70 hover:text-bone hover:bg-charcoal-soft/60'
+const userNavItems = [
+  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app/register', label: 'ลงทะเบียนหอพัก', icon: UserPlus },
+  { to: '/app/rooms', label: 'เลือกห้องพัก', icon: BedDouble },
+  { to: '/app/payment', label: 'ชำระเงิน', icon: CreditCard },
+  { to: '/app/receipt', label: 'ใบเสร็จรับเงิน', icon: ReceiptText },
+  { to: '/app/review', label: 'ประเมิน & รีวิว', icon: Star },
+  { to: '/app/services', label: 'ค่าไฟ & แจ้งซ่อม', icon: Zap }
+]
+
+const adminNavItems = [
+  { to: '/app/admin', label: 'แดชบอร์ดผู้จัดการ (Admin)', icon: ShieldCheck, highlight: true },
+  { to: '/app', label: 'หน้าหลักนิสิต', icon: LayoutDashboard, end: true },
+  { to: '/app/rooms', label: 'ผังห้องพักรวม', icon: BedDouble },
+  { to: '/app/services', label: 'มอนิเตอร์ไฟฟ้า & แจ้งซ่อม', icon: Zap }
+]
 
 export default function Sidebar() {
-  const { infoCompleted, booking, payment } = useRegistration()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <aside className="w-64 shrink-0 bg-charcoal border-r border-charcoal-line h-full flex flex-col">
-      <div className="px-5 py-6">
-        <p className="font-display font-bold text-gold text-lg leading-tight">หอพักเทาทอง</p>
-        <p className="text-xs text-bone/50">ระบบลงทะเบียนหอพักนิสิต</p>
+    <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col shrink-0 border-r border-slate-800">
+      <div className="p-6 border-b border-slate-800">
+        <h2 className="text-xl font-bold tracking-wider text-white">DORM TAOTHONG</h2>
+        {isAdmin ? (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>ผู้จัดการหอพัก</span>
+          </div>
+        ) : (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400">
+            <span>ระบบนิสิต</span>
+          </div>
+        )}
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
-        <NavLink to="/app" end className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
-          หน้าหลัก
-        </NavLink>
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+        {/* If user is Admin, show Admin Menu at the top */}
+        {isAdmin && (
+          <div className="mb-4 pb-2 border-b border-slate-800">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-amber-400/80 mb-2">
+              เมนูผู้จัดการหอพัก
+            </p>
+            <NavLink
+              to="/app/admin"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                  isActive
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 font-extrabold'
+                    : 'text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30'
+                }`
+              }
+            >
+              <ShieldCheck className="w-5 h-5 shrink-0" />
+              <span>ระบบจัดการหอพัก 👑</span>
+            </NavLink>
+          </div>
+        )}
 
-        <p className="px-4 pt-4 pb-1 text-[11px] uppercase tracking-wider text-bone/30">ลงทะเบียนหอพัก</p>
+        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+          {isAdmin ? 'มุมมองระบบนิสิต' : 'เมนูหลัก'}
+        </p>
 
-        <NavLink to="/app/register" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}>
-          1. ข้อมูลนิสิต/ผู้ปกครอง
-          {infoCompleted && <span className="ml-auto text-room-empty2 text-xs">✓</span>}
-        </NavLink>
-
-        <NavLink
-          to="/app/rooms"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive} ${!infoCompleted ? 'opacity-40 pointer-events-none' : ''}`}
-        >
-          2. เลือกห้องพัก
-          {booking.confirmed && <span className="ml-auto text-room-empty2 text-xs">✓</span>}
-        </NavLink>
-
-        <NavLink
-          to="/app/payment"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive} ${!booking.confirmed ? 'opacity-40 pointer-events-none' : ''}`}
-        >
-          3. ชำระเงิน
-          {payment.status === 'paid' && <span className="ml-auto text-room-empty2 text-xs">✓</span>}
-        </NavLink>
-
-        <NavLink
-          to="/app/review"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive} ${payment.status !== 'paid' ? 'opacity-40 pointer-events-none' : ''}`}
-        >
-          4. รีวิว / ให้ข้อเสนอแนะ
-        </NavLink>
+        {(isAdmin ? adminNavItems.filter((i) => !i.highlight) : userNavItems).map((item) => {
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                }`
+              }
+            >
+              {Icon && <Icon className="w-5 h-5 shrink-0" />}
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
       </nav>
-
-      <div className="px-5 py-4 border-t border-charcoal-line text-[11px] text-bone/40">
-        มหาวิทยาลัยบูรพา · เทาทอง
-      </div>
     </aside>
   )
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRegistration } from '../../context/RegistrationContext'
 
@@ -12,40 +13,46 @@ function Row({ label, value }) {
 
 export default function ReviewStep({ onBack }) {
   const { student, father, mother, markInfoCompleted } = useRegistration()
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
 
-  function handleFinish() {
-    markInfoCompleted()
-    navigate('/app/rooms')
+  async function handleFinish() {
+    setSaving(true)
+    try {
+      await markInfoCompleted()
+    } finally {
+      setSaving(false)
+      navigate('/app/rooms')
+    }
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="card">
         <h2 className="font-display text-lg font-semibold mb-4">ข้อมูลนิสิต</h2>
-        <Row label="ชื่อ-นามสกุล" value={`${student.prefix} ${student.firstName} ${student.lastName}`} />
+        <Row label="ชื่อ-นามสกุล" value={`${student.prefix} ${student.firstName} ${student.lastName}`.trim()} />
         <Row label="เลขบัตรประชาชน" value={student.citizenId} />
         <Row label="เบอร์โทรศัพท์" value={student.phone} />
       </div>
 
       <div className="card">
         <h2 className="font-display text-lg font-semibold mb-4">ข้อมูลบิดา</h2>
-        <Row label="ชื่อ-นามสกุล" value={`${father.prefix} ${father.firstName} ${father.lastName}`} />
+        <Row label="ชื่อ-นามสกุล" value={`${father.prefix} ${father.firstName} ${father.lastName}`.trim()} />
         <Row label="เบอร์โทรศัพท์" value={father.phone} />
       </div>
 
       <div className="card">
         <h2 className="font-display text-lg font-semibold mb-4">ข้อมูลมารดา</h2>
-        <Row label="ชื่อ-นามสกุล" value={`${mother.prefix} ${mother.firstName} ${mother.lastName}`} />
+        <Row label="ชื่อ-นามสกุล" value={`${mother.prefix} ${mother.firstName} ${mother.lastName}`.trim()} />
         <Row label="เบอร์โทรศัพท์" value={mother.phone} />
       </div>
 
       <div className="flex justify-between">
-        <button className="btn-ghost" onClick={onBack}>
+        <button className="btn-ghost" onClick={onBack} disabled={saving}>
           ← กลับ
         </button>
-        <button className="btn-primary" onClick={handleFinish}>
-          ลงทะเบียนเสร็จแล้ว → เลือกห้องพัก
+        <button className="btn-primary" onClick={handleFinish} disabled={saving}>
+          {saving ? 'กำลังบันทึกลงฐานข้อมูล...' : 'ลงทะเบียนเสร็จแล้ว → เลือกห้องพัก'}
         </button>
       </div>
     </div>

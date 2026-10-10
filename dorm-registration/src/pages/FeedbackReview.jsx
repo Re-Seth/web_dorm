@@ -5,10 +5,18 @@ export default function FeedbackReview() {
   const { review, submitReview } = useRegistration()
   const [rating, setRating] = useState(review.rating || 0)
   const [comment, setComment] = useState(review.comment || '')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    submitReview({ rating, comment })
+    setSubmitting(true)
+    try {
+      await submitReview({ rating, comment })
+    } catch (err) {
+      alert('เกิดข้อผิดพลาดในการบันทึกรีวิว')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (review.submitted) {
@@ -16,7 +24,7 @@ export default function FeedbackReview() {
       <div className="max-w-lg card text-center">
         <h1 className="font-display text-xl font-semibold mb-2">ขอบคุณสำหรับความคิดเห็น</h1>
         <p className="text-bone/50 text-sm">
-          ทีมงานหอพักเทาทองจะนำข้อมูลของคุณไปพัฒนาระบบให้ดียิ่งขึ้น
+          ทีมงานหอพักเทาทองได้บันทึกข้อมูลของคุณลงฐานข้อมูล SQLite เรียบร้อยแล้ว เพื่อนำไปพัฒนาระบบให้ดียิ่งขึ้น
         </p>
       </div>
     )
@@ -26,7 +34,7 @@ export default function FeedbackReview() {
     <div className="max-w-lg">
       <h1 className="font-display text-2xl font-semibold mb-1">รีวิวประสบการณ์การใช้งาน</h1>
       <p className="text-bone/50 mb-6">
-        ความคิดเห็นของคุณจะถูกนำไปใช้ปรับปรุงระบบลงทะเบียนหอพักในอนาคต
+        ความคิดเห็นของคุณจะถูกบันทึกลงฐานข้อมูลเพื่อใช้ปรับปรุงระบบลงทะเบียนหอพัก
       </p>
 
       <form className="card space-y-5" onSubmit={handleSubmit}>
@@ -61,8 +69,8 @@ export default function FeedbackReview() {
           />
         </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={rating === 0}>
-          ส่งรีวิว
+        <button type="submit" className="btn-primary w-full" disabled={rating === 0 || submitting}>
+          {submitting ? 'กำลังส่งข้อมูล...' : 'ส่งรีวิว'}
         </button>
       </form>
     </div>

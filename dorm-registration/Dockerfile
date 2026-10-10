@@ -1,24 +1,22 @@
-# Stage 1: Build application
-FROM node:20-alpine AS builder
+# ใช้ Node.js 20 Alpine เป็น Base Image
+FROM node:20-alpine
 
 WORKDIR /app
 
+# คัดลอก package.json และ package-lock.json
 COPY package*.json ./
 
-# ใช้ npm install เพื่อติดตั้ง devDependencies ด้วย (เช่น vite)
+# ติดตั้ง Dependencies ทั้งหมด
 RUN npm install
 
+# คัดลอกซอร์สโค้ดทั้งหมด
 COPY . .
 
-# URL ของ backend ที่เบราว์เซอร์เรียกใช้ (ฝังตอน build)
-ARG VITE_API_URL=http://localhost:5000
-ENV VITE_API_URL=$VITE_API_URL
-
+# Build โปรเจกต์สำหรับการใช้งาน
 RUN npm run build
 
-# Stage 2: Serve ด้วย Nginx
-FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# กำหนด Port สำหรับ Frontend
+EXPOSE 5173
+
+# รัน Frontend ด้วย Vite preview ผ่าน Node.js
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]

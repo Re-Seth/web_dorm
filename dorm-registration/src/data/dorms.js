@@ -30,6 +30,7 @@ export function getRoomsForFloor(dormId, floor) {
       code: roomNumber,
       capacity: CAPACITY,
       occupied,
+      floor,
     })
   }
   return rooms

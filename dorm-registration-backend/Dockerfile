@@ -1,20 +1,28 @@
-FROM node:20-bookworm-slim
+# ใช้ Node.js 20 Alpine เป็น Base Image
+FROM node:20-alpine
 
-# Prisma ต้องใช้ openssl
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# ติดตั้ง openssl สำหรับ Prisma ORM
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
+# คัดลอก package.json และ package-lock.json
 COPY package*.json ./
-# ต้องติดตั้ง devDependencies ด้วย เพราะ `prisma` CLI อยู่ใน devDependencies
+
+# ติดตั้ง Dependencies ทั้งหมด
 RUN npm install
 
-COPY prisma ./prisma
+# คัดลอก Prisma schema และโครงสร้างไฟล์
+COPY prisma ./prisma/
+
+# Generate Prisma Client ให้พร้อมใช้งาน
 RUN npx prisma generate
 
+# คัดลอกซอร์สโค้ดทั้งหมด
 COPY . .
 
+# กำหนด Port สำหรับ Backend API & Socket.io
 EXPOSE 5000
 
-# สร้าง/อัปเดตตารางให้ตรงกับ schema แล้วค่อยสตาร์ทเซิร์ฟเวอร์
-CMD ["sh", "-c", "npx prisma db push && node index.js"]
+# รัน Migration / Push schema, Seed ข้อมูลเริ่มต้น และเริ่มเซิร์ฟเวอร์
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node seed.js && npm start"]

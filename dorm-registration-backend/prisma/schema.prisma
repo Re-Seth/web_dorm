@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -8,74 +9,110 @@ datasource db {
 }
 
 model User {
+  id             Int                 @id @default(autoincrement())
+  username       String              @unique
+  email          String              @unique
+  password       String
+  name           String?
+  role           String              @default("USER")
+  profile        StudentProfile?
+  booking        Booking?
+  reviews        Review[]
+  maintenanceReq MaintenanceRequest[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model StudentProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prefix          String   @default("")
+  firstName       String   @default("")
+  lastName        String   @default("")
+  citizenId       String   @default("")
+  phone           String   @default("")
+  fatherPrefix    String   @default("")
+  fatherFirstName String   @default("")
+  fatherLastName  String   @default("")
+  fatherPhone     String   @default("")
+  motherPrefix    String   @default("")
+  motherFirstName String   @default("")
+  motherLastName  String   @default("")
+  motherPhone     String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Dorm {
+  id     String @id
+  name   String
+  gender String
+  floors Int
+  rooms  Room[]
+}
+
+model Room {
+  id       String    @id
+  dormId   String
+  dorm     Dorm      @relation(fields: [dormId], references: [id], onDelete: Cascade)
+  code     String
+  floor    Int
+  capacity Int       @default(4)
+  bookings Booking[]
+}
+
+model Booking {
   id        Int      @id @default(autoincrement())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("USER")
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+  status    String   @default("CONFIRMED")
+  payment   Payment?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// ข้อมูลการใช้ไฟฟ้า (รองรับ Real-time)
-model PowerUsage {
-  id          Int      @id @default(autoincrement())
-  roomId      Int
-  voltage     Float    // แรงดันไฟฟ้า (V)
-  current     Float    // กระแสไฟฟ้า (A)
-  power       Float    // กำลังไฟฟ้า (Watt / kW)
-  energyUnits Float    // หน่วยสะสม (kWh)
-  recordedAt  DateTime @default(now())
+model Payment {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  receiptNo String   @unique
+  amount    Float    @default(1999)
+  method    String   @default("qr")
+  status    String   @default("PAID")
+  paidAt    DateTime @default(now())
 }
 
-// ข้อมูลแจ้งซ่อม
 model MaintenanceRequest {
   id          Int      @id @default(autoincrement())
   roomId      Int
-  userId      Int
-  title       String   // เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว
-  description String   // รายละเอียด
-  imageUrl    String?  // รูปภาพประกอบ
-  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  imageUrl    String?
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-// ==========================================
-// ส่วนเพิ่มสำหรับระบบหลังบ้าน (Admin)
-// ==========================================
-
-// ห้องพัก (dormId ตรงกับ id ใน frontend: tt1..tt4)
-model Room {
-  id        Int       @id @default(autoincrement())
-  dormId    String
-  floor     Int
-  code      String    @unique   // เช่น A101
-  capacity  Int       @default(4)
-  status    String    @default("AVAILABLE") // AVAILABLE, MAINTENANCE, CLOSED
-  bookings  Booking[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model PowerUsage {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  voltage     Float
+  current     Float
+  power       Float
+  energyUnits Float
+  recordedAt  DateTime @default(now())
 }
 
-// การจอง + การชำระเงิน
-model Booking {
-  id            Int       @id @default(autoincrement())
-  roomId        Int
-  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  userId        Int?
-  studentName   String
-  studentCode   String?
-  phone         String?
-  parentName    String?
-  parentPhone   String?
-  status        String    @default("PENDING") // PENDING, CONFIRMED, CANCELLED
-  paymentStatus String    @default("UNPAID")  // UNPAID, PAID
-  paymentAmount Int       @default(1999)
-  paymentMethod String?
-  receiptNo     String?
-  paidAt        DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
 }
