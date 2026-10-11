@@ -1,26 +1,69 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DORMS, getRoomsForFloor } from '../data/dorms'
 import RoomCell from '../components/RoomCell'
 import ConfirmModal from '../components/ConfirmModal'
 import { useRegistration } from '../context/RegistrationContext'
+import api, { errMsg } from '../studentApi'
 
 export default function RoomSelection() {
   const [dormId, setDormId] = useState(DORMS[0].id)
   const [floor, setFloor] = useState(1)
   const [pendingRoom, setPendingRoom] = useState(null)
-  const { selectRoom, confirmBooking } = useRegistration()
+  const [error, setError] = useState('')
+  const [availability, setAvailability] = useState({})
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { student, father, mother, selectRoom, confirmBooking } = useRegistration()
   const navigate = useNavigate()
 
   const dorm = DORMS.find((d) => d.id === dormId)
-  const rooms = useMemo(() => getRoomsForFloor(dormId, floor), [dormId, floor])
+  const rooms = useMemo(
+    () => getRoomsForFloor(dormId, floor, availability),
+    [dormId, floor, availability],
+  )
+
+  // ดึงจำนวนผู้พักจริงของชั้นที่เลือกจาก backend
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get('/api/rooms/availability', { params: { dormId, floor } })
+      .then((r) => {
+        if (cancelled) return
+        setAvailability(Object.fromEntries(r.data.map((x) => [x.code, x])))
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setAvailability({})
+        setError('โหลดสถานะห้องไม่สำเร็จ: ' + errMsg(e))
+      })
+    return () => { cancelled = true }
+  }, [dormId, floor, refreshKey])
 
   function handleDormChange(id) {
     setDormId(id)
     setFloor(1)
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
+    setError('')
+    const parent = father.firstName ? father : mother
+    try {
+      // บันทึกการจองลงฐานข้อมูล (backend ตรวจห้องเต็ม/ซ้ำให้)
+      await api.post('/api/bookings', {
+        dormId,
+        floor,
+        roomCode: pendingRoom.code,
+        studentName: `${student.prefix}${student.firstName} ${student.lastName}`.trim(),
+        phone: student.phone,
+        parentName: `${parent.prefix}${parent.firstName} ${parent.lastName}`.trim(),
+        parentPhone: parent.phone,
+      })
+    } catch (e) {
+      setError(errMsg(e))
+      setPendingRoom(null)
+      setRefreshKey((k) => k + 1)
+      return
+    }
     selectRoom({ dormId, floor, roomId: pendingRoom.id })
     confirmBooking()
     setPendingRoom(null)
@@ -31,6 +74,12 @@ export default function RoomSelection() {
     <div>
       <h1 className="font-display text-2xl font-semibold mb-1">เลือกห้องพัก</h1>
       <p className="text-bone/50 mb-6">เลือกหอพัก ชั้น และห้องที่ต้องการ</p>
+
+      {error && (
+        <p role="alert" className="text-sm text-room-full bg-room-full/10 border border-room-full/30 rounded-md px-3 py-2 mb-4">
+          {error}
+        </p>
+      )}
 
       {/* dorm tabs */}
       <div className="flex flex-wrap gap-2 mb-6">

@@ -1,14 +1,26 @@
 import { useState } from 'react'
 import { useRegistration } from '../context/RegistrationContext'
+import api, { errMsg } from '../studentApi'
 
 export default function FeedbackReview() {
   const { review, submitReview } = useRegistration()
   const [rating, setRating] = useState(review.rating || 0)
   const [comment, setComment] = useState(review.comment || '')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    submitReview({ rating, comment })
+    setBusy(true)
+    setError('')
+    try {
+      await api.post('/api/reviews', { rating, comment })
+      submitReview({ rating, comment })
+    } catch (err) {
+      setError(errMsg(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (review.submitted) {
@@ -61,8 +73,10 @@ export default function FeedbackReview() {
           />
         </div>
 
-        <button type="submit" className="btn-primary w-full" disabled={rating === 0}>
-          ส่งรีวิว
+        {error && <p role="alert" className="text-room-full text-sm">{error}</p>}
+
+        <button type="submit" className="btn-primary w-full" disabled={rating === 0 || busy}>
+          {busy ? 'กำลังส่ง…' : 'ส่งรีวิว'}
         </button>
       </form>
     </div>

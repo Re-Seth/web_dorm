@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import OtpInput from '../components/OtpInput'
 import { useAuth } from '../context/AuthContext'
+import api, { errMsg, setToken, clearToken } from '../studentApi'
 
 const MODE = { LOGIN: 'login', REGISTER: 'register' }
 
@@ -13,6 +14,7 @@ export default function AuthPage() {
   const [sentCode, setSentCode] = useState('')
   const [error, setError] = useState('')
   const [resendIn, setResendIn] = useState(0)
+  const [busy, setBusy] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -32,8 +34,12 @@ export default function AuthPage() {
       setError('กรุณากรอก Username และ Password ให้ครบถ้วน')
       return
     }
-    if (mode === MODE.REGISTER && !form.contact) {
+    if (!form.contact) {
       setError('กรุณากรอกอีเมลหรือเบอร์โทรศัพท์เพื่อรับรหัส OTP')
+      return
+    }
+    if (form.password.length < 6) {
+      setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
       return
     }
     // simulate sending a 6-digit code to email/phone
@@ -45,7 +51,30 @@ export default function AuthPage() {
     console.info('[DEMO] OTP ที่ส่งไปยัง', form.contact || 'บัญชีของคุณ', '=', code)
   }
 
-  function verifyOtp() {
+  // เข้าสู่ระบบจริงผ่าน backend (ตรวจรหัสผ่านฝั่งเซิร์ฟเวอร์)
+  async function handleLogin() {
+    setError('')
+    if (!form.username || !form.password) {
+      setError('กรุณากรอก Username และ Password ให้ครบถ้วน')
+      return
+    }
+    setBusy(true)
+    try {
+      const { data } = await api.post('/login', {
+        username: form.username.trim(),
+        password: form.password,
+      })
+      setToken(data.token)
+      login({ identifier: data.user.username, contact: data.user.email })
+      navigate('/app')
+    } catch (e) {
+      setError(e.response?.status === 401 ? 'Username หรือ Password ไม่ถูกต้อง' : errMsg(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function verifyOtp() {
     if (otp.length !== 6) {
       setError('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก')
       return
@@ -54,8 +83,25 @@ export default function AuthPage() {
       setError('รหัส OTP ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง')
       return
     }
-    login({ identifier: form.username, contact: form.contact })
-    navigate('/app')
+    // OTP ผ่านแล้ว → สมัครจริงใน backend แล้วล็อกอินต่อ
+    setBusy(true)
+    setError('')
+    try {
+      const username = form.username.trim()
+      // ตาราง User ต้องมีอีเมล: ถ้ากรอกเบอร์โทร จะสร้างอีเมลสำรองจาก username
+      const email = form.contact.includes('@') ? form.contact.trim() : `${username}@phone.local`
+      await api.post('/register', { username, email, password: form.password, name: username })
+      const { data } = await api.post('/login', { username, password: form.password })
+      clearToken()
+      setToken(data.token)
+      login({ identifier: data.user.username, contact: form.contact })
+      navigate('/app')
+    } catch (e) {
+      setError(errMsg(e))
+      setStage('credentials')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -150,8 +196,12 @@ export default function AuthPage() {
 
               {error && <p className="text-room-full text-sm mt-4">{error}</p>}
 
-              <button onClick={sendOtp} className="btn-primary w-full mt-6">
-                {mode === MODE.REGISTER ? 'ส่งรหัส OTP' : 'เข้าสู่ระบบ'}
+              <button
+                onClick={mode === MODE.REGISTER ? sendOtp : handleLogin}
+                disabled={busy}
+                className="btn-primary w-full mt-6"
+              >
+                {busy ? 'กำลังดำเนินการ…' : mode === MODE.REGISTER ? 'ส่งรหัส OTP' : 'เข้าสู่ระบบ'}
               </button>
             </>
           ) : (
@@ -173,8 +223,8 @@ export default function AuthPage() {
 
               {error && <p className="text-room-full text-sm mt-4">{error}</p>}
 
-              <button onClick={verifyOtp} className="btn-primary w-full mt-6">
-                ยืนยันและเข้าสู่ระบบ
+              <button onClick={verifyOtp} disabled={busy} className="btn-primary w-full mt-6">
+                {busy ? 'กำลังสร้างบัญชี…' : 'ยืนยันและเข้าสู่ระบบ'}
               </button>
 
               <div className="flex items-center justify-between mt-4 text-sm">

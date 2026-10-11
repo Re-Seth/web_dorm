@@ -72,10 +72,20 @@ model Booking {
   parentPhone   String?
   status        String    @default("PENDING") // PENDING, CONFIRMED, CANCELLED
   paymentStatus String    @default("UNPAID")  // UNPAID, PAID
-  paymentAmount Int       @default(1999)
+  paymentAmount Int       @default(999)
   paymentMethod String?
   receiptNo     String?
   paidAt        DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// รีวิวจากนิสิต (1 คน 1 รีวิว)
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
