@@ -318,6 +318,7 @@ app.patch('/api/maintenance/:id/status', async (req, res) => {
 // 5. Admin API (ระบบหลังบ้าน) — ดูรายละเอียดใน adminRoutes.js
 // ==========================================
 require('./adminRoutes')({ app, prisma, authenticateToken });
+require('./studentRoutes')({ app, prisma, authenticateToken });
 
 // ==========================================
 // 4. Real-time Power Monitoring (Socket.io)

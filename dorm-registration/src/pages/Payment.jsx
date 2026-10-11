@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRegistration } from '../context/RegistrationContext'
+import api, { errMsg } from '../studentApi'
 
 const METHODS = [
   { id: 'qr', label: 'สแกน QR พร้อมเพย์' },
@@ -11,16 +12,22 @@ export default function Payment() {
   const { payment, completePayment } = useRegistration()
   const [method, setMethod] = useState('qr')
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  function handlePay() {
+  async function handlePay() {
     setProcessing(true)
-    // simulate payment gateway confirmation
-    setTimeout(() => {
-      completePayment(method)
-      setProcessing(false)
+    setError('')
+    try {
+      // บันทึกการชำระเงินลงฐานข้อมูล (ยังเป็นการชำระจำลอง ไม่มี payment gateway)
+      const { data } = await api.post('/api/bookings/pay', { method })
+      completePayment(method, data.receiptNo, data.paidAt)
       navigate('/app/receipt')
-    }, 1200)
+    } catch (e) {
+      setError(errMsg(e))
+    } finally {
+      setProcessing(false)
+    }
   }
 
   if (payment.status === 'paid') {
@@ -87,6 +94,8 @@ export default function Payment() {
           <p>ชื่อบัญชี: มหาวิทยาลัยบูรพา (หอพักเทาทอง)</p>
         </div>
       )}
+
+      {error && <p role="alert" className="text-room-full text-sm mb-4">{error}</p>}
 
       <button className="btn-primary w-full" onClick={handlePay} disabled={processing}>
         {processing ? 'กำลังตรวจสอบการชำระเงิน…' : `ยืนยันชำระเงิน ฿${payment.amount.toLocaleString()}`}

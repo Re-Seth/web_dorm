@@ -59,20 +59,17 @@ export function RegistrationProvider({ children }) {
     setState((s) => ({ ...s, booking: { ...s.booking, confirmed: true } }))
   }
 
-  function completePayment(method) {
-    const receiptNo = 'RCPT-' + Date.now().toString().slice(-8)
-    setState((s) => ({
-      ...s,
-      payment: {
-        ...s.payment,
-        status: 'paid',
-        method,
-        paidAt: new Date().toISOString(),
-        receiptNo,
-      },
-    }))
-    return receiptNo
-  }
+  function completePayment(
+     method,
+     receiptNo = 'RCPT-' + Date.now().toString().slice(-8),
+     paidAt = new Date().toISOString(),
+   ) {
+     setState((s) => ({
+       ...s,
+       payment: { ...s.payment, status: 'paid', method, paidAt, receiptNo },
+     }))
+     return receiptNo
+   }
 
   function submitReview({ rating, comment }) {
     setState((s) => ({

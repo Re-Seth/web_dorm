@@ -16,6 +16,7 @@ import AdminRooms from './admin/pages/Rooms'
 import AdminBookings from './admin/pages/Bookings'
 import AdminMaintenance from './admin/pages/Maintenance'
 import AdminUsers from './admin/pages/Users'
+import AdminReviews from './admin/pages/Reviews'   // ปรับ path ตามที่ App.jsx อยู่
 
 export default function App() {
   return (
