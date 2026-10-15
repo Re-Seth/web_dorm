@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useAuth } from './AuthContext'
 
 const RegistrationContext = createContext(null)
-const STORAGE_KEY = 'taothong.registration'
+// ความคืบหน้าการลงทะเบียนเก็บแยกตามผู้ใช้: taothong.registration.<username>
+const STORAGE_PREFIX = 'taothong.registration'
 
 const emptyPerson = { prefix: '', firstName: '', lastName: '', phone: '' }
 
@@ -30,15 +32,31 @@ const initialState = {
   },
 }
 
-export function RegistrationProvider({ children }) {
-  const [state, setState] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+function load(key) {
+  try {
+    const saved = localStorage.getItem(key)
     return saved ? { ...initialState, ...JSON.parse(saved) } : initialState
-  })
+  } catch {
+    return initialState
+  }
+}
+
+export function RegistrationProvider({ children }) {
+  const { user } = useAuth()
+  const storageKey = `${STORAGE_PREFIX}.${user?.identifier ?? 'guest'}`
+
+  const [state, setState] = useState(() => load(storageKey))
+  const [activeKey, setActiveKey] = useState(storageKey)
+
+  // เปลี่ยนบัญชี (ล็อกอิน/ออกจากระบบ/สลับผู้ใช้) → โหลดข้อมูลของบัญชีนั้น ไม่ใช่ของคนก่อนหน้า
+  if (activeKey !== storageKey) {
+    setActiveKey(storageKey)
+    setState(load(storageKey))
+  }
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+    localStorage.setItem(activeKey, JSON.stringify(state))
+  }, [state, activeKey])
 
   function updatePerson(role, data) {
     setState((s) => ({ ...s, [role]: { ...s[role], ...data } }))
@@ -59,17 +77,18 @@ export function RegistrationProvider({ children }) {
     setState((s) => ({ ...s, booking: { ...s.booking, confirmed: true } }))
   }
 
+  // รับเลขใบเสร็จ/เวลาจาก server (ถ้าไม่ส่งมา จะสร้างเองในเครื่องแบบเดิม)
   function completePayment(
-     method,
-     receiptNo = 'RCPT-' + Date.now().toString().slice(-8),
-     paidAt = new Date().toISOString(),
-   ) {
-     setState((s) => ({
-       ...s,
-       payment: { ...s.payment, status: 'paid', method, paidAt, receiptNo },
-     }))
-     return receiptNo
-   }
+    method,
+    receiptNo = 'RCPT-' + Date.now().toString().slice(-8),
+    paidAt = new Date().toISOString(),
+  ) {
+    setState((s) => ({
+      ...s,
+      payment: { ...s.payment, status: 'paid', method, paidAt, receiptNo },
+    }))
+    return receiptNo
+  }
 
   function submitReview({ rating, comment }) {
     setState((s) => ({
@@ -79,7 +98,7 @@ export function RegistrationProvider({ children }) {
   }
 
   function resetAll() {
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(activeKey)
     setState(initialState)
   }
 
