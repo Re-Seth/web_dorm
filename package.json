@@ -1,0 +1,10 @@
+{
+  "name": "web-dorm",
+  "version": "1.0.0",
+  "description": "ระบบลงทะเบียนหอพักนิสิต หอพักเทาทอง",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node start.js"
+  }
+}
