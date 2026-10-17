@@ -202,9 +202,9 @@ docker compose down
 | Service | Container Name | Port (โฮสต์) | รายละเอียด |
 |---|---|---|---|
 | **Backend** | `dorm_backend` | `http://localhost:5000` | Node.js 20 + Express + Prisma (SQLite persist) + Socket.io |
-| **Frontend** | `dorm_frontend` | `http://localhost:5173` | Node.js 20 + Vite Preview (React 18 + Tailwind) |
+| **Frontend** | `dorm_frontend` | `http://localhost:8080` | Build ด้วย Vite แล้วเสิร์ฟด้วย Nginx (React 18 + Tailwind) |
 
-> 💾 ฐานข้อมูล SQLite ใน `dorm-registration-backend/prisma/` ถูก mount แบบ volume ไว้บนโฮสต์ ทำให้ข้อมูลการจอง ผู้ใช้ และค่าไฟไม่สูญหายเมื่อหยุดคอนเทนเนอร์
+> 💾 ฐานข้อมูล SQLite ของ Docker เก็บใน volume `dbdata` (`/data/dev.db` ในคอนเทนเนอร์) แยกจาก `dorm-registration-backend/prisma/dev.db` ที่ใช้ตอนรันแบบไม่ใช้ Docker — ข้อมูลไม่หายเมื่อหยุดคอนเทนเนอร์ (ยกเว้นสั่ง `docker compose down -v`)
 
 ---
 

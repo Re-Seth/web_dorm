@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ชุดสีหลัก (RGB) — ใช้ผ่านคลาส Tailwind: charcoal / gold / bone */
+:root {
+  --c-charcoal: 28 31 34;       /* #1C1F22 */
+  --c-charcoal-soft: 36 40 44;  /* #24282C */
+  --c-charcoal-line: 49 54 59;  /* #31363B */
+  --c-gold: 199 160 61;         /* #C7A03D */
+  --c-gold-soft: 228 201 114;   /* #E4C972 */
+  --c-gold-deep: 143 110 31;    /* #8F6E1F */
+  --c-bone: 244 241 232;        /* #F4F1E8 */
+  --c-focus: 228 201 114;
+}
+
+/* ธีม Japandi (ครีม / เทอร์ราคอตตา / ไม้โอ๊ก) ตรงกับหน้าแรก */
+.theme-japandi {
+  --c-charcoal: 250 247 242;     /* พื้นหลังครีม #FAF7F2 */
+  --c-charcoal-soft: 255 255 255;/* การ์ดสีขาว */
+  --c-charcoal-line: 233 223 207;/* เส้นขอบทราย */
+  --c-gold: 200 109 81;          /* เทอร์ราคอตตา #C86D51 */
+  --c-gold-soft: 176 89 62;      /* hover เข้มขึ้น */
+  --c-gold-deep: 143 68 48;
+  --c-bone: 61 51 42;            /* ตัวอักษรไม้โอ๊กเข้ม #3D332A */
+  --c-focus: 200 109 81;
+  background-color: rgb(var(--c-charcoal));
+  color: rgb(var(--c-bone));
+}
+
 * {
   box-sizing: border-box;
 }
@@ -15,8 +41,8 @@ body {
 }
 
 ::selection {
-  background: #C7A03D;
-  color: #1C1F22;
+  background: rgb(var(--c-gold));
+  color: rgb(var(--c-charcoal));
 }
 
 /* visible keyboard focus everywhere */
@@ -25,7 +51,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #E4C972;
+  outline: 2px solid rgb(var(--c-focus));
   outline-offset: 2px;
 }
 
@@ -58,4 +84,22 @@ textarea:focus-visible {
 
 .card {
   @apply bg-charcoal-soft border border-charcoal-line rounded-card p-6;
+}
+
+/* ปรับรูปทรงให้นุ่มนวลแบบ Japandi */
+.theme-japandi .card {
+  @apply rounded-2xl shadow-[0_10px_30px_-12px_rgba(61,51,42,0.12)];
+}
+.theme-japandi .btn-primary,
+.theme-japandi .btn-ghost {
+  @apply rounded-full;
+}
+.theme-japandi .btn-primary {
+  @apply text-white shadow-md;
+}
+.theme-japandi .btn-ghost {
+  @apply bg-white;
+}
+.theme-japandi .field {
+  @apply bg-white rounded-xl focus:ring-2 focus:ring-gold/20;
 }

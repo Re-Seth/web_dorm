@@ -5,17 +5,29 @@ export default {
     extend: {
       colors: {
         // "เทาทอง" (grey-gold) identity — charcoal ground, brass-gold signal
+        // ค่าสีมาจาก CSS variables ใน index.css: ค่าเริ่มต้นเป็นโทนเข้ม (หลังบ้าน)
+        // และ .theme-japandi สลับเป็นโทนครีม/เทอร์ราคอตตา (ฝั่งนิสิต)
         charcoal: {
-          DEFAULT: '#1C1F22',
-          soft: '#24282C',
-          line: '#31363B',
+          DEFAULT: 'rgb(var(--c-charcoal) / <alpha-value>)',
+          soft: 'rgb(var(--c-charcoal-soft) / <alpha-value>)',
+          line: 'rgb(var(--c-charcoal-line) / <alpha-value>)',
         },
         gold: {
-          DEFAULT: '#C7A03D',
-          soft: '#E4C972',
-          deep: '#8F6E1F',
+          DEFAULT: 'rgb(var(--c-gold) / <alpha-value>)',
+          soft: 'rgb(var(--c-gold-soft) / <alpha-value>)',
+          deep: 'rgb(var(--c-gold-deep) / <alpha-value>)',
         },
-        bone: '#F4F1E8',
+        bone: 'rgb(var(--c-bone) / <alpha-value>)',
+        // โทน Japandi สำหรับหน้าแรก (Landing)
+        japandi: {
+          bg: '#FAF7F2',
+          sand: '#EFE7DA',
+          terracotta: '#C86D51',
+          'terracotta-dark': '#B0593E',
+          oak: '#3D332A',
+          wood: '#D4B895',
+          muted: '#7A7068',
+        },
         room: {
           empty: '#2E7D5B',   // 0-1 คน — ว่าง
           empty2: '#3F9E73',

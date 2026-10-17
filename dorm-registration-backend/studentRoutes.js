@@ -3,6 +3,7 @@
 // + GET /api/admin/reviews สำหรับแอดมินดูรีวิว
 // ==========================================
 const DORM_IDS = ['tt1', 'tt2', 'tt3', 'tt4'];
+const { DORMS_BY_GENDER } = require('./profileRoutes');
 const CAPACITY = 4;
 
 module.exports = function registerStudentRoutes({ app, prisma, authenticateToken }) {
@@ -56,6 +57,12 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
       }
       if (!studentName || !String(studentName).trim()) {
         return res.status(400).json({ message: 'ต้องกรอกข้อมูลนิสิตก่อนจองห้อง' });
+      }
+
+      // ผู้ที่กรอกโปรไฟล์ผู้เช่าแล้ว จองได้เฉพาะอาคารตามเพศ
+      const profile = await prisma.tenantProfile.findUnique({ where: { userId: req.user.id } });
+      if (profile && !DORMS_BY_GENDER[profile.gender]?.includes(dormId)) {
+        return res.status(400).json({ message: 'อาคารนี้ไม่ตรงกับเพศของผู้สมัคร' });
       }
 
       const existing = await activeBooking(req.user.id);

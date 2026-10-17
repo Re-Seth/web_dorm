@@ -16,7 +16,7 @@ export default function RoomCell({ room, selected, onSelect }) {
       disabled={disabled}
       onClick={() => onSelect(room)}
       className={
-        'relative flex flex-col items-center justify-center gap-1 rounded-md border-2 py-3 transition-transform ' +
+        'relative flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 transition-transform ' +
         STATUS_STYLE[status] +
         (selected ? ' ring-2 ring-gold scale-[1.03]' : ' hover:scale-[1.03]')
       }

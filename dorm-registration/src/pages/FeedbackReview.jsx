@@ -52,7 +52,7 @@ export default function FeedbackReview() {
                 onClick={() => setRating(n)}
                 aria-label={`${n} ดาว`}
                 className={
-                  'w-10 h-10 rounded-md border text-lg transition-colors ' +
+                  'w-10 h-10 rounded-full border text-lg transition-colors ' +
                   (n <= rating ? 'bg-gold border-gold text-charcoal' : 'border-charcoal-line text-bone/40')
                 }
               >

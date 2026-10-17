@@ -1,248 +1,43 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import OtpInput from '../components/OtpInput'
-import { useAuth } from '../context/AuthContext'
-import api, { errMsg, setToken, clearToken } from '../studentApi'
+import { BookmarkCheck, IdCard, PencilLine } from 'lucide-react'
+import LoginCard from '../components/landing/LoginCard'
+import SiteHeader from '../components/landing/SiteHeader'
 
-const MODE = { LOGIN: 'login', REGISTER: 'register' }
+const PERKS = [
+  [IdCard, 'บัตรผู้เช่าดิจิทัลพร้อม QR Code'],
+  [PencilLine, 'แก้ไขข้อมูลติดต่อและผู้ติดต่อฉุกเฉินได้ตลอดเวลา'],
+  [BookmarkCheck, 'เก็บข้อมูลไว้ลงทะเบียนภาคเรียนถัดไป'],
+]
 
+// หน้าเข้าสู่ระบบผู้เช่า (สมัครใหม่ที่หน้า /apply)
 export default function AuthPage() {
-  const [mode, setMode] = useState(MODE.REGISTER)
-  const [stage, setStage] = useState('credentials') // credentials | otp
-  const [form, setForm] = useState({ username: '', password: '', contact: '' })
-  const [otp, setOtp] = useState('')
-  const [sentCode, setSentCode] = useState('')
-  const [error, setError] = useState('')
-  const [resendIn, setResendIn] = useState(0)
-  const [busy, setBusy] = useState(false)
-  const { login } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (resendIn <= 0) return
-    const t = setInterval(() => setResendIn((s) => s - 1), 1000)
-    return () => clearInterval(t)
-  }, [resendIn])
-
-  function update(field, value) {
-    setForm((f) => ({ ...f, [field]: value }))
-  }
-
-  function sendOtp() {
-    setError('')
-    if (!form.username || !form.password) {
-      setError('กรุณากรอก Username และ Password ให้ครบถ้วน')
-      return
-    }
-    if (!form.contact) {
-      setError('กรุณากรอกอีเมลหรือเบอร์โทรศัพท์เพื่อรับรหัส OTP')
-      return
-    }
-    if (form.password.length < 6) {
-      setError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
-      return
-    }
-    // simulate sending a 6-digit code to email/phone
-    const code = String(Math.floor(100000 + Math.random() * 900000))
-    setSentCode(code)
-    setStage('otp')
-    setResendIn(30)
-    // demo aid only — a real backend never returns the OTP to the client
-    console.info('[DEMO] OTP ที่ส่งไปยัง', form.contact || 'บัญชีของคุณ', '=', code)
-  }
-
-  // เข้าสู่ระบบจริงผ่าน backend (ตรวจรหัสผ่านฝั่งเซิร์ฟเวอร์)
-  async function handleLogin() {
-    setError('')
-    if (!form.username || !form.password) {
-      setError('กรุณากรอก Username และ Password ให้ครบถ้วน')
-      return
-    }
-    setBusy(true)
-    try {
-      const { data } = await api.post('/login', {
-        username: form.username.trim(),
-        password: form.password,
-      })
-      setToken(data.token)
-      login({ identifier: data.user.username, contact: data.user.email })
-      navigate('/app')
-    } catch (e) {
-      setError(e.response?.status === 401 ? 'Username หรือ Password ไม่ถูกต้อง' : errMsg(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function verifyOtp() {
-    if (otp.length !== 6) {
-      setError('กรุณากรอกรหัส OTP ให้ครบ 6 หลัก')
-      return
-    }
-    if (otp !== sentCode) {
-      setError('รหัส OTP ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง')
-      return
-    }
-    // OTP ผ่านแล้ว → สมัครจริงใน backend แล้วล็อกอินต่อ
-    setBusy(true)
-    setError('')
-    try {
-      const username = form.username.trim()
-      // ตาราง User ต้องมีอีเมล: ถ้ากรอกเบอร์โทร จะสร้างอีเมลสำรองจาก username
-      const email = form.contact.includes('@') ? form.contact.trim() : `${username}@phone.local`
-      await api.post('/register', { username, email, password: form.password, name: username })
-      const { data } = await api.post('/login', { username, password: form.password })
-      clearToken()
-      setToken(data.token)
-      login({ identifier: data.user.username, contact: form.contact })
-      navigate('/app')
-    } catch (e) {
-      setError(errMsg(e))
-      setStage('credentials')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      {/* brand panel */}
-      <div className="hidden lg:flex flex-col justify-between bg-charcoal-soft border-r border-charcoal-line p-12">
-        <div>
-          <p className="font-display text-2xl font-bold text-gold">หอพักเทาทอง</p>
-          <p className="text-bone/50 text-sm mt-1">มหาวิทยาลัยบูรพา</p>
+    <div className="theme-japandi min-h-screen bg-japandi-bg text-japandi-oak font-body flex flex-col">
+      <SiteHeader />
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+        <div className="relative hidden lg:block">
+          <div className="rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
+            <img
+              src="https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=1000&q=80"
+              alt="ห้องพักหอพักเทาทองสไตล์ Japandi"
+              className="w-full h-[520px] object-cover"
+            />
+          </div>
+          <div className="absolute bottom-6 left-6 right-6 bg-white/95 backdrop-blur-md rounded-2xl p-5 border border-japandi-sand shadow-lg space-y-2">
+            {PERKS.map(([Icon, text]) => (
+              <p key={text} className="flex items-center gap-2 text-sm"><Icon size={16} className="text-japandi-terracotta shrink-0" /> {text}</p>
+            ))}
+          </div>
         </div>
-        <div>
-          <p className="font-display text-3xl font-semibold leading-snug max-w-sm">
-            ลงทะเบียนหอพัก จองห้อง และชำระเงิน<span className="text-gold">ในที่เดียว</span>
-          </p>
-          <p className="text-bone/50 text-sm mt-4 max-w-sm">
-            ตั้งแต่ยืนยันตัวตนด้วย OTP ไปจนถึงเลือกห้องพักแบบเรียลไทม์ — ครบทุกขั้นตอนของการเข้าหอ
-          </p>
+
+        <div className="w-full max-w-md mx-auto space-y-6">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-widest text-japandi-terracotta">Tenant Sign In</span>
+            <h1 className="font-display text-3xl font-bold mt-1">ยินดีต้อนรับกลับ</h1>
+            <p className="text-sm text-japandi-muted mt-2">เข้าสู่ระบบด้วยอีเมลที่ใช้ลงทะเบียน เพื่อดูและจัดการข้อมูลผู้เช่าของคุณ</p>
+          </div>
+          <LoginCard redirectTo="/app" />
         </div>
-        <p className="text-bone/30 text-xs">© {new Date().getFullYear()} หอพักเทาทอง</p>
-      </div>
-
-      {/* form panel */}
-      <div className="flex items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-sm">
-          {stage === 'credentials' ? (
-            <>
-              <div className="flex gap-1 mb-8 bg-charcoal-soft border border-charcoal-line rounded-md p-1">
-                {[
-                  [MODE.REGISTER, 'ลงทะเบียนใหม่'],
-                  [MODE.LOGIN, 'เข้าสู่ระบบ'],
-                ].map(([m, label]) => (
-                  <button
-                    key={m}
-                    onClick={() => {
-                      setMode(m)
-                      setError('')
-                    }}
-                    className={
-                      'flex-1 py-2 rounded text-sm font-medium transition-colors ' +
-                      (mode === m ? 'bg-gold text-charcoal' : 'text-bone/60 hover:text-bone')
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <h1 className="font-display text-xl font-semibold mb-1">
-                {mode === MODE.REGISTER ? 'สร้างบัญชีนิสิต' : 'เข้าสู่ระบบ'}
-              </h1>
-              <p className="text-bone/50 text-sm mb-6">
-                {mode === MODE.REGISTER
-                  ? 'กรอกข้อมูลเพื่อสร้างบัญชีและยืนยันตัวตนด้วย OTP'
-                  : 'กรอก Username และ Password ของคุณ'}
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="field-label" htmlFor="username">Username</label>
-                  <input
-                    id="username"
-                    className="field"
-                    value={form.username}
-                    onChange={(e) => update('username', e.target.value)}
-                    placeholder="เช่น 64010001"
-                  />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="password">Password</label>
-                  <input
-                    id="password"
-                    type="password"
-                    className="field"
-                    value={form.password}
-                    onChange={(e) => update('password', e.target.value)}
-                    placeholder="••••••••"
-                  />
-                </div>
-                {mode === MODE.REGISTER && (
-                  <div>
-                    <label className="field-label" htmlFor="contact">อีเมล หรือ เบอร์โทรศัพท์ (สำหรับรับ OTP)</label>
-                    <input
-                      id="contact"
-                      className="field"
-                      value={form.contact}
-                      onChange={(e) => update('contact', e.target.value)}
-                      placeholder="name@buu.ac.th หรือ 08xxxxxxxx"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {error && <p className="text-room-full text-sm mt-4">{error}</p>}
-
-              <button
-                onClick={mode === MODE.REGISTER ? sendOtp : handleLogin}
-                disabled={busy}
-                className="btn-primary w-full mt-6"
-              >
-                {busy ? 'กำลังดำเนินการ…' : mode === MODE.REGISTER ? 'ส่งรหัส OTP' : 'เข้าสู่ระบบ'}
-              </button>
-            </>
-          ) : (
-            <>
-              <h1 className="font-display text-xl font-semibold mb-1">ยืนยันตัวตน (OTP)</h1>
-              <p className="text-bone/50 text-sm mb-6">
-                กรอกรหัส 6 หลักที่ส่งไปยัง <span className="text-bone">{form.contact || 'บัญชีของคุณ'}</span>
-              </p>
-
-              <OtpInput value={otp} onChange={setOtp} />
-
-              {/* DEMO ONLY — shows the code on screen since there is no real
-                  SMS/Email provider connected yet. Remove this box once the
-                  backend OTP service is wired up. */}
-              <div className="mt-4 rounded-md border border-gold/30 bg-gold/10 px-3 py-2 text-xs text-gold">
-                โหมดทดสอบ (ยังไม่เชื่อม API): รหัส OTP ของคุณคือ{' '}
-                <span className="font-mono font-semibold">{sentCode}</span>
-              </div>
-
-              {error && <p className="text-room-full text-sm mt-4">{error}</p>}
-
-              <button onClick={verifyOtp} disabled={busy} className="btn-primary w-full mt-6">
-                {busy ? 'กำลังสร้างบัญชี…' : 'ยืนยันและเข้าสู่ระบบ'}
-              </button>
-
-              <div className="flex items-center justify-between mt-4 text-sm">
-                <button className="text-bone/50 hover:text-bone" onClick={() => setStage('credentials')}>
-                  ← กลับ
-                </button>
-                <button
-                  disabled={resendIn > 0}
-                  onClick={sendOtp}
-                  className="text-gold disabled:text-bone/30 disabled:cursor-not-allowed"
-                >
-                  {resendIn > 0 ? `ส่งรหัสใหม่อีกครั้งใน ${resendIn}s` : 'ส่งรหัสอีกครั้ง'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

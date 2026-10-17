@@ -16,11 +16,11 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ✨ คอนเทนเนอร์กำลังทำงานเรียบร้อยแล้ว!
-echo  👉 Frontend: http://localhost:5173
+echo  👉 Frontend: http://localhost:8080
 echo  👉 Backend:  http://localhost:5000
 echo.
 echo กำลังเปิดเบราว์เซอร์อัตโนมัติ...
-start http://localhost:5173
+start http://localhost:8080
 echo.
 echo ========================================================
 echo หากต้องการหยุดการทำงาน สามารถรัน: docker compose down

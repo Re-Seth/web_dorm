@@ -310,3 +310,5 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }
     }
   });
 };
+
+module.exports.DORMS = DORMS;
