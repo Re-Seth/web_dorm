@@ -20,7 +20,7 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '300kb' })); // รองรับรูปโปรไฟล์บนบัตรผู้เช่า
 
 // ค่าเริ่มต้นสำหรับ JWT Secret กรณีไม่ได้ตั้งใน .env
 const JWT_SECRET = process.env.JWT_SECRET || 'dorm_secret_key_1234';
@@ -79,7 +79,8 @@ app.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { username } });
+    // เข้าสู่ระบบได้ทั้ง username หรืออีเมล
+    const user = await prisma.user.findFirst({ where: { OR: [{ username }, { email: username }] } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
@@ -268,46 +269,80 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
 // 3. Maintenance (แจ้งซ่อม) Endpoints
 // ==========================================
 
+const MAINTENANCE_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
+
+// ไม่บังคับ Token: ถ้าแนบมาก็รู้ว่าใครเป็นผู้แจ้ง
+const optionalToken = (req, res, next) => {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return next();
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (!err) req.user = user;
+    next();
+  });
+};
+
+// แนบชื่อผู้แจ้ง (user) ให้รายการแจ้งซ่อม — หน้าผู้จัดการหอพักใช้แสดง "ผู้แจ้ง"
+async function withReporters(requests) {
+  const ids = [...new Set(requests.map((r) => r.userId).filter(Boolean))];
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, name: true } })
+    : [];
+  return requests.map((r) => ({ ...r, user: users.find((u) => u.id === r.userId) || null }));
+}
+
 // GET /api/maintenance - ดึงรายการแจ้งซ่อมทั้งหมด
 app.get('/api/maintenance', async (req, res) => {
   try {
     const requests = await prisma.maintenanceRequest.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    res.json(requests);
+    res.json(await withReporters(requests));
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch maintenance requests', error: err.message });
   }
 });
 
-// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่
-app.post('/api/maintenance', async (req, res) => {
+// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่ (ล็อกอินอยู่ = ผู้แจ้งคือผู้ใช้คนนั้น)
+app.post('/api/maintenance', optionalToken, async (req, res) => {
   try {
     const { roomId, userId, title, description } = req.body;
+    if (!String(title || '').trim() || !String(description || '').trim()) {
+      return res.status(400).json({ message: 'กรุณาระบุอุปกรณ์ที่ชำรุดและรายละเอียดอาการ' });
+    }
     const newRequest = await prisma.maintenanceRequest.create({
       data: {
         roomId: Number(roomId),
-        userId: Number(userId || 1),
-        title,
-        description,
+        userId: req.user?.id ?? Number(userId || 1),
+        title: String(title).trim(),
+        description: String(description).trim(),
         status: 'PENDING'
       }
     });
-    res.status(201).json(newRequest);
+    const [withUser] = await withReporters([newRequest]);
+    // แจ้งเตือนผู้จัดการหอพักแบบ Real-time (กระดิ่งบนแถบด้านบน)
+    io.emit('maintenance_created', withUser);
+    res.status(201).json(withUser);
   } catch (err) {
     res.status(500).json({ message: 'Failed to create request', error: err.message });
   }
 });
 
-// PATCH /api/maintenance/:id/status - อัปเดตสถานะการแจ้งซ่อม
-app.patch('/api/maintenance/:id/status', async (req, res) => {
+// PATCH /api/maintenance/:id/status - อัปเดตสถานะการแจ้งซ่อม (เฉพาะ Admin)
+app.patch('/api/maintenance/:id/status', authenticateToken, async (req, res) => {
   try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: สงวนสิทธิ์สำหรับผู้จัดการหอพัก (Admin) เท่านั้น' });
+    }
     const { id } = req.params;
     const { status } = req.body;
+    if (!MAINTENANCE_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'สถานะไม่ถูกต้อง' });
+    }
     const updated = await prisma.maintenanceRequest.update({
       where: { id: Number(id) },
       data: { status }
     });
+    io.emit('maintenance_updated', updated);
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: 'Failed to update status', error: err.message });
@@ -317,8 +352,12 @@ app.patch('/api/maintenance/:id/status', async (req, res) => {
 // ==========================================
 // 5. Admin API (ระบบหลังบ้าน) — ดูรายละเอียดใน adminRoutes.js
 // ==========================================
+// หน้าแดชบอร์ดผู้ดูแล (จาก branch kit) — ต้องมาก่อน adminRoutes
+require('./adminDashboardRoutes')({ app, prisma, authenticateToken });
 require('./adminRoutes')({ app, prisma, authenticateToken });
 require('./studentRoutes')({ app, prisma, authenticateToken });
+require('./profileRoutes')({ app, prisma, authenticateToken });
+require('./registrationPeriod')({ app });
 
 // ==========================================
 // 4. Real-time Power Monitoring (Socket.io)

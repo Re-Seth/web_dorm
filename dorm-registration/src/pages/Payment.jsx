@@ -58,7 +58,7 @@ export default function Payment() {
             key={m.id}
             onClick={() => setMethod(m.id)}
             className={
-              'flex-1 py-2.5 rounded-md text-sm border transition-colors ' +
+              'flex-1 py-2.5 rounded-full text-sm border transition-colors ' +
               (method === m.id
                 ? 'bg-gold text-charcoal border-gold font-medium'
                 : 'border-charcoal-line text-bone/70 hover:border-gold/50')
@@ -72,7 +72,7 @@ export default function Payment() {
       {method === 'qr' ? (
         <div className="card flex flex-col items-center gap-3 mb-6">
           {/* placeholder QR pattern rendered as SVG — replace with a real generated PromptPay QR from the backend */}
-          <div className="w-44 h-44 bg-bone rounded-md p-3">
+          <div className="w-44 h-44 bg-[#F4F1E8] rounded-2xl p-3">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <rect width="100" height="100" fill="#F4F1E8" />
               {Array.from({ length: 10 }).map((_, r) =>

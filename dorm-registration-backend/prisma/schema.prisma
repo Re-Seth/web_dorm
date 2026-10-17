@@ -89,3 +89,49 @@ model Review {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ข้อมูลผู้เช่า (กรอกจากหน้าลงทะเบียน /apply) — 1 บัญชี 1 โปรไฟล์
+// เพศใช้คัดกรองอาคาร: Male → tt1, Female → tt2/tt3/tt4
+model TenantProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  gender             String   // Male, Female
+  dormId             String   // tt1..tt4
+  // ข้อมูลตามบัตรประชาชน
+  prefix             String
+  firstName          String
+  lastName           String
+  nameEn             String
+  citizenId          String
+  birthDate          DateTime
+  address            String
+  // การศึกษา / ประเภทผู้เช่า
+  educationLevel     String   // bachelor, master, doctoral, student, general
+  school             String?  // สถานศึกษา หรือสถานที่ทำงาน (บุคคลทั่วไป)
+  faculty            String?
+  studyYear          String?
+  // ช่องทางติดต่อ
+  mobile             String
+  lineId             String?
+  contactEmail       String?
+  // บุคคลติดต่อฉุกเฉิน 2 ท่าน
+  emergencyName      String
+  emergencyRelation  String
+  emergencyPhone     String
+  emergencyAddress   String
+  emergency2Name     String
+  emergency2Relation String
+  emergency2Phone    String
+  emergency2Address  String
+  // ยานพาหนะ
+  vehicleType        String   @default("none") // none, car, motorcycle
+  vehicleBrand       String?
+  vehicleColor       String?
+  vehiclePlate       String?
+  vehicleProvince    String?
+  // บัตรผู้เช่าดิจิทัล (รูปย่อ JPEG แบบ data URL)
+  photo              String?
+  keepForNextTerm    Boolean  @default(false) // บันทึกข้อมูลไว้ใช้ลงทะเบียนภาคเรียนถัดไป
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

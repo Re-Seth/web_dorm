@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="th" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เทาทอง Residence | Modern Japandi Student & Living Dormitory</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Prompt / Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        japandi: {
+                            bg: '#FAF7F2',        /* Warm Cream */
+                            card: '#FFFFFF',      /* Crisp White */
+                            sand: '#EFE7DA',      /* Soft Sand */
+                            terracotta: '#C86D51',/* Soft Terracotta */
+                            'terracotta-dark': '#B0593E',
+                            oak: '#3D332A',       /* Deep Oak Charcoal */
+                            wood: '#D4B895',      /* Light Oak Accent */
+                            muted: '#8C827A'      /* Soft Muted Gray */
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Prompt', 'Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #FAF7F2;
+            color: #3D332A;
+            font-family: 'Prompt', 'Plus Jakarta Sans', sans-serif;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #FAF7F2; }
+        ::-webkit-scrollbar-thumb { background: #D4B895; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #C86D51; }
+        .japandi-shadow { box-shadow: 0 10px 30px -10px rgba(61, 51, 42, 0.08); }
+        .japandi-border { border: 1px solid #EFE7DA; }
+        .form-input {
+            width: 100%;
+            padding: 0.55rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #EFE7DA;
+            background: #fff;
+            font-size: 0.75rem;
+            outline: none;
+            transition: box-shadow .2s, border-color .2s;
+        }
+        .form-input:focus { border-color: #C86D51; box-shadow: 0 0 0 3px rgba(200, 109, 81, 0.2); }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 500; color: #3D332A; margin-bottom: 0.25rem; }
+        .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+        .reveal.is-visible { opacity: 1; transform: none; }
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { opacity: 1; transform: none; transition: none; }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col justify-between selection:bg-japandi-terracotta selection:text-white">
+
+    <!-- TOP NAVIGATION -->
+    <header class="sticky top-0 z-40 bg-japandi-bg/90 backdrop-blur-md border-b border-japandi-sand transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-full bg-japandi-terracotta text-white flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-japandi-terracotta-dark transition">TT</div>
+                <div>
+                    <span class="text-xl font-semibold tracking-wide block text-japandi-oak leading-tight">เทาทอง <span class="text-japandi-terracotta font-light">Residence</span></span>
+                    <span class="text-xs text-japandi-muted tracking-wider uppercase block">Tao Thong Dormitory</span>
+                </div>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-japandi-oak">
+                <a href="#about" class="hover:text-japandi-terracotta transition">เกี่ยวกับโครงการ</a>
+                <a href="#buildings" class="hover:text-japandi-terracotta transition">อาคารและห้องพัก</a>
+                <a href="#amenities" class="hover:text-japandi-terracotta transition">สิ่งอำนวยความสะดวก</a>
+                <a href="#location" class="hover:text-japandi-terracotta transition">แผนที่ตำแหน่ง</a>
+            </nav>
+
+            <button onclick="openRegistrationModal()" class="px-4 sm:px-5 py-2.5 rounded-full bg-japandi-terracotta text-white font-medium text-sm hover:bg-japandi-terracotta-dark shadow-md transition-all flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-xs"></i>
+                <span class="hidden sm:inline">ลงทะเบียนผู้เช่า</span>
+                <span class="sm:hidden">ลงทะเบียน</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="main-landing" class="flex-grow">
+
+        <!-- 1. HERO SECTION -->
+        <section id="about" class="relative py-12 md:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                <div class="lg:col-span-6 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-japandi-sand text-japandi-oak text-xs font-medium">
+                        <span class="w-2 h-2 rounded-full bg-japandi-terracotta animate-pulse"></span>
+                        เปิดรับลงทะเบียนผู้เช่าประจำปีการศึกษาใหม่
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-japandi-oak leading-tight">
+                        สัมผัสชีวิตสมดุลในสไตล์ <span class="text-japandi-terracotta font-normal italic">Japandi</span> <br>ณ หอพักเทาทอง
+                    </h1>
+                    <p class="text-japandi-muted text-base sm:text-lg leading-relaxed font-light">
+                        ที่พักอาศัยร่วมสมัยสำหรับนิสิตและคนทำงาน ออกแบบด้วยความเรียบง่าย อบอุ่น ผสานฟังก์ชันการใช้งานอย่างลงตัว พร้อมระบบรักษาความปลอดภัย 24 ชั่วโมง และสิ่งอำนวยความสะดวกครบครัน
+                    </p>
+
+                    <div class="pt-2 flex flex-wrap gap-4 items-center">
+                        <button onclick="openRegistrationModal()" class="px-7 py-3.5 rounded-full bg-japandi-oak text-white text-base font-medium hover:bg-black transition shadow-lg flex items-center gap-3">
+                            <span>ลงทะเบียนจองห้องพัก</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                        <a href="#buildings" class="px-7 py-3.5 rounded-full bg-white border border-japandi-sand text-japandi-oak text-base font-medium hover:bg-japandi-sand/50 transition">
+                            ชมอาคาร เทาทอง 1-4
+                        </a>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-japandi-sand">
+                        <div>
+                            <span class="block text-2xl font-bold text-japandi-oak">4 ตึก</span>
+                            <span class="text-xs text-japandi-muted">โซนชาย & หญิง</span>
+                        </div>
+                        <div>
+                            <span class="block text-2xl font-bold text-japandi-oak">24 ชม.</span>
+                            <span class="text-xs text-japandi-muted">รักษาความปลอดภัย</span>
+                        </div>
+                        <div>
+                            <span class="block text-2xl font-bold text-japandi-oak">High-Speed</span>
+                            <span class="text-xs text-japandi-muted">Wi-Fi ไฟเบอร์ออพติก</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-6 relative">
+                    <div class="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-japandi-sand">
+                        <img src="https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=1200&q=80" alt="Tao Thong Interior" class="w-full h-[320px] sm:h-[420px] object-cover hover:scale-105 transition-transform duration-700">
+                        <div class="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl japandi-border flex items-center justify-between gap-3 shadow-lg">
+                            <div>
+                                <span class="text-xs font-semibold text-japandi-terracotta uppercase tracking-wider block">สถาปัตยกรรมอบอุ่น</span>
+                                <h4 class="text-sm font-semibold text-japandi-oak">เน้นแสงธรรมชาติ & วัสดุไม้แอชแท้</h4>
+                            </div>
+                            <span class="text-xs px-3 py-1 bg-japandi-sand text-japandi-oak rounded-full font-medium whitespace-nowrap">Japandi Living</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. BUILDING SHOWCASE (เทาทอง 1-4) -->
+        <section id="buildings" class="py-16 bg-white border-y border-japandi-sand reveal">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-2xl mx-auto mb-12">
+                    <span class="text-xs font-semibold uppercase tracking-widest text-japandi-terracotta block mb-2">Our Buildings & Layouts</span>
+                    <h2 class="text-3xl font-bold text-japandi-oak">อาคารหอพักเทาทอง 1 - 4</h2>
+                    <p class="text-japandi-muted text-sm mt-2">แบ่งโซนการพักอาศัยเป็นสัดส่วนเพื่อความเป็นส่วนตัว ปลอดภัย และสะดวกสบายที่สุด</p>
+
+                    <div class="flex flex-wrap justify-center gap-2 mt-6">
+                        <button onclick="filterRooms('all')" class="room-tab border border-japandi-sand px-4 py-2 rounded-full text-xs font-medium transition" data-filter="all">ทั้งหมด</button>
+                        <button onclick="filterRooms('studio')" class="room-tab border border-japandi-sand px-4 py-2 rounded-full text-xs font-medium transition" data-filter="studio">Studio Room</button>
+                        <button onclick="filterRooms('onebed')" class="room-tab border border-japandi-sand px-4 py-2 rounded-full text-xs font-medium transition" data-filter="onebed">1-Bedroom</button>
+                        <button onclick="filterRooms('loft')" class="room-tab border border-japandi-sand px-4 py-2 rounded-full text-xs font-medium transition" data-filter="loft">Loft Suite</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Building 1 -->
+                    <div class="room-card studio bg-japandi-bg rounded-2xl overflow-hidden japandi-border hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=600&q=80" alt="เทาทอง 1" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md"><i class="fa-solid fa-mars mr-1"></i> เทาทอง 1 (หอชาย)</span>
+                        </div>
+                        <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-japandi-oak">หอพักเทาทอง 1</h3>
+                                <p class="text-xs text-japandi-muted mt-1">บรรยากาศสงบ เหมาะแก่การเรียนและการพักผ่อน พร้อมลานกิจกรรมกีฬา</p>
+                                <div class="mt-3 flex flex-wrap gap-1">
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">Studio 24-28 ตร.ม.</span>
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">เตียงเดี่ยว / เตียงคู่</span>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-japandi-sand flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs text-japandi-muted block">เริ่มต้น</span>
+                                    <span class="text-base font-bold text-japandi-terracotta">฿4,200 <span class="text-xs font-normal text-japandi-oak">/เดือน</span></span>
+                                </div>
+                                <button onclick="startRegistrationWithBuilding('เทาทอง 1', 'Male')" class="px-3 py-1.5 rounded-lg bg-japandi-oak text-white text-xs hover:bg-black transition">เลือกจองตึกนี้</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Building 2 -->
+                    <div class="room-card studio onebed bg-japandi-bg rounded-2xl overflow-hidden japandi-border hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80" alt="เทาทอง 2" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md"><i class="fa-solid fa-venus mr-1"></i> เทาทอง 2 (หอหญิง)</span>
+                        </div>
+                        <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-japandi-oak">หอพักเทาทอง 2</h3>
+                                <p class="text-xs text-japandi-muted mt-1">ดีไซน์มินิมอล ระบบคีย์การ์ดลิฟต์ล็อกชั้น ใกล้โซนร้านค้าและคาเฟ่</p>
+                                <div class="mt-3 flex flex-wrap gap-1">
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">Studio & 1-Bed</span>
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">ระเบียงส่วนตัว</span>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-japandi-sand flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs text-japandi-muted block">เริ่มต้น</span>
+                                    <span class="text-base font-bold text-japandi-terracotta">฿4,500 <span class="text-xs font-normal text-japandi-oak">/เดือน</span></span>
+                                </div>
+                                <button onclick="startRegistrationWithBuilding('เทาทอง 2', 'Female')" class="px-3 py-1.5 rounded-lg bg-japandi-oak text-white text-xs hover:bg-black transition">เลือกจองตึกนี้</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Building 3 -->
+                    <div class="room-card onebed loft bg-japandi-bg rounded-2xl overflow-hidden japandi-border hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=600&q=80" alt="เทาทอง 3" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md"><i class="fa-solid fa-venus mr-1"></i> เทาทอง 3 (หอหญิง)</span>
+                        </div>
+                        <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-japandi-oak">หอพักเทาทอง 3</h3>
+                                <p class="text-xs text-japandi-muted mt-1">ห้องพักวิวสวน ร่มรื่น เงียบสงบ พร้อมพื้นที่อ่านหนังสือส่วนกลาง</p>
+                                <div class="mt-3 flex flex-wrap gap-1">
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">1-Bedroom Deluxe</span>
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">เฟอร์นิเจอร์ครบ</span>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-japandi-sand flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs text-japandi-muted block">เริ่มต้น</span>
+                                    <span class="text-base font-bold text-japandi-terracotta">฿4,800 <span class="text-xs font-normal text-japandi-oak">/เดือน</span></span>
+                                </div>
+                                <button onclick="startRegistrationWithBuilding('เทาทอง 3', 'Female')" class="px-3 py-1.5 rounded-lg bg-japandi-oak text-white text-xs hover:bg-black transition">เลือกจองตึกนี้</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Building 4 -->
+                    <div class="room-card loft bg-japandi-bg rounded-2xl overflow-hidden japandi-border hover:shadow-xl hover:-translate-y-1 transition duration-300 flex flex-col">
+                        <div class="relative h-48 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=600&q=80" alt="เทาทอง 4" class="w-full h-full object-cover hover:scale-105 transition-transform duration-500">
+                            <span class="absolute top-3 left-3 bg-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md"><i class="fa-solid fa-venus mr-1"></i> เทาทอง 4 (หอหญิง)</span>
+                        </div>
+                        <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-japandi-oak">หอพักเทาทอง 4</h3>
+                                <p class="text-xs text-japandi-muted mt-1">อาคารใหม่ล่าสุด ตกแต่งสไตล์ Loft-Japandi พร้อมฟิตเนสในตัว</p>
+                                <div class="mt-3 flex flex-wrap gap-1">
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">Loft & Premium Studio</span>
+                                    <span class="text-[10px] bg-white border border-japandi-sand text-japandi-oak px-2 py-0.5 rounded">Smart TV & Refrigerator</span>
+                                </div>
+                            </div>
+                            <div class="pt-3 border-t border-japandi-sand flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs text-japandi-muted block">เริ่มต้น</span>
+                                    <span class="text-base font-bold text-japandi-terracotta">฿5,200 <span class="text-xs font-normal text-japandi-oak">/เดือน</span></span>
+                                </div>
+                                <button onclick="startRegistrationWithBuilding('เทาทอง 4', 'Female')" class="px-3 py-1.5 rounded-lg bg-japandi-oak text-white text-xs hover:bg-black transition">เลือกจองตึกนี้</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <p id="no-room-msg" class="hidden text-center text-sm text-japandi-muted mt-8">ไม่พบห้องพักประเภทนี้</p>
+            </div>
+        </section>
+
+        <!-- 3. AMENITIES -->
+        <section id="amenities" class="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-xs font-semibold uppercase tracking-widest text-japandi-terracotta block mb-2">Modern Living Amenities</span>
+                <h2 class="text-3xl font-bold text-japandi-oak">สิ่งอำนวยความสะดวกครบครัน</h2>
+                <p class="text-japandi-muted text-sm mt-2">เติมเต็มทุกไลฟ์สไตล์การเรียนและการทำงานด้วยพื้นที่ส่วนกลางมาตรฐานสูง</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-wifi"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">Wi-Fi ความเร็วสูง</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">ไฟเบอร์ออพติกทุกห้องพัก</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">รักษาความปลอดภัย</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">CCTV & คีย์การ์ด 24 ชม.</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-laptop-code"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">Rooftop Co-Working</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">พื้นที่อ่านหนังสือ & ทำงาน</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-dumbbell"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">Fitness Room</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">ห้องออกกำลังกายทันสมัย</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-square-parking"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">ลานจอดรถส่วนตัว</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">สำหรับรถยนต์ & มอเตอร์ไซค์</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl text-center japandi-border hover:border-japandi-terracotta hover:-translate-y-1 transition duration-300">
+                    <div class="w-12 h-12 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-shirt"></i></div>
+                    <h4 class="font-bold text-sm text-japandi-oak">Laundry Room</h4>
+                    <p class="text-[11px] text-japandi-muted mt-1">เครื่องซักผ้า-อบผ้าหยอดเหรียญ</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. LOCATION & MAP -->
+        <section id="location" class="py-16 bg-white border-t border-japandi-sand reveal">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    <div class="lg:col-span-5 space-y-6">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-japandi-terracotta block">Location Pinpoint</span>
+                        <h2 class="text-3xl font-bold text-japandi-oak">ตำแหน่งและแผนที่โครงการ</h2>
+                        <p class="text-japandi-muted text-sm leading-relaxed">
+                            ตั้งอยู่ในทำเลศักยภาพ การเดินทางสะดวกสบาย ใกล้มหาวิทยาลัย ร้านอาหาร ร้านสะดวกซื้อ 24 ชั่วโมง และสิ่งอำนวยความสะดวกโดยรอบ
+                        </p>
+
+                        <div class="space-y-3">
+                            <button onclick="highlightMapBuilding(1)" id="map-btn-1" class="map-btn w-full text-left p-3.5 rounded-xl border border-japandi-sand bg-japandi-bg hover:bg-japandi-sand/60 transition flex items-center justify-between font-medium text-xs sm:text-sm">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-blue-600"></i> เทาทอง 1 (หอชาย) - ติดลานกีฬา</span>
+                                <i class="fa-solid fa-chevron-right text-xs text-japandi-muted"></i>
+                            </button>
+                            <button onclick="highlightMapBuilding(2)" id="map-btn-2" class="map-btn w-full text-left p-3.5 rounded-xl border border-japandi-sand bg-japandi-bg hover:bg-japandi-sand/60 transition flex items-center justify-between font-medium text-xs sm:text-sm">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-pink-600"></i> เทาทอง 2 (หอหญิง) - ใกล้โซนร้านอาหาร</span>
+                                <i class="fa-solid fa-chevron-right text-xs text-japandi-muted"></i>
+                            </button>
+                            <button onclick="highlightMapBuilding(3)" id="map-btn-3" class="map-btn w-full text-left p-3.5 rounded-xl border border-japandi-sand bg-japandi-bg hover:bg-japandi-sand/60 transition flex items-center justify-between font-medium text-xs sm:text-sm">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-pink-600"></i> เทาทอง 3 (หอหญิง) - โซนสวนเงียบสงบ</span>
+                                <i class="fa-solid fa-chevron-right text-xs text-japandi-muted"></i>
+                            </button>
+                            <button onclick="highlightMapBuilding(4)" id="map-btn-4" class="map-btn w-full text-left p-3.5 rounded-xl border border-japandi-sand bg-japandi-bg hover:bg-japandi-sand/60 transition flex items-center justify-between font-medium text-xs sm:text-sm">
+                                <span class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-pink-600"></i> เทาทอง 4 (หอหญิง) - ตึกใหม่พร้อมฟิตเนส</span>
+                                <i class="fa-solid fa-chevron-right text-xs text-japandi-muted"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7">
+                        <div class="relative w-full h-96 rounded-3xl overflow-hidden border border-japandi-sand shadow-inner bg-[#E5E3DF] p-6 flex flex-col justify-between">
+                            <div class="absolute inset-0 opacity-20 pointer-events-none">
+                                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3D332A" stroke-width="1"/>
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100%" height="100%" fill="url(#grid)" />
+                                </svg>
+                            </div>
+
+                            <div class="relative z-10 grid grid-cols-2 gap-4 h-full">
+                                <div id="pin-1" class="map-pin bg-white/90 backdrop-blur p-4 rounded-2xl border-2 border-blue-500 shadow-md flex flex-col justify-between transition-all duration-300">
+                                    <div>
+                                        <span class="text-xs font-bold text-blue-600 block">เทาทอง 1 (หอชาย)</span>
+                                        <p class="text-[11px] text-japandi-muted">ฝั่งทิศเหนือ / ใกล้ประตูทางเข้า 1</p>
+                                    </div>
+                                    <div class="text-[10px] text-japandi-oak flex items-center gap-1 font-medium"><i class="fa-solid fa-person-walking text-japandi-terracotta"></i> เดินถึง ม. 3 นาที</div>
+                                </div>
+                                <div id="pin-2" class="map-pin bg-white/90 backdrop-blur p-4 rounded-2xl border-2 border-pink-400 shadow-md flex flex-col justify-between transition-all duration-300">
+                                    <div>
+                                        <span class="text-xs font-bold text-pink-600 block">เทาทอง 2 (หอหญิง)</span>
+                                        <p class="text-[11px] text-japandi-muted">ฝั่งตะวันออก / ใกล้ Community Mall</p>
+                                    </div>
+                                    <div class="text-[10px] text-japandi-oak flex items-center gap-1 font-medium"><i class="fa-solid fa-store text-japandi-terracotta"></i> ใกล้ 7-Eleven</div>
+                                </div>
+                                <div id="pin-3" class="map-pin bg-white/90 backdrop-blur p-4 rounded-2xl border-2 border-pink-400 shadow-md flex flex-col justify-between transition-all duration-300">
+                                    <div>
+                                        <span class="text-xs font-bold text-pink-600 block">เทาทอง 3 (หอหญิง)</span>
+                                        <p class="text-[11px] text-japandi-muted">ฝั่งทิศใต้ / โซนสวนธรรมชาติ</p>
+                                    </div>
+                                    <div class="text-[10px] text-japandi-oak flex items-center gap-1 font-medium"><i class="fa-solid fa-tree text-japandi-terracotta"></i> บรรยากาศสงบร่มรื่น</div>
+                                </div>
+                                <div id="pin-4" class="map-pin bg-white/90 backdrop-blur p-4 rounded-2xl border-2 border-pink-400 shadow-md flex flex-col justify-between transition-all duration-300">
+                                    <div>
+                                        <span class="text-xs font-bold text-pink-600 block">เทาทอง 4 (หอหญิง)</span>
+                                        <p class="text-[11px] text-japandi-muted">ฝั่งทิศตะวันตก / อาคารใหม่ล่าสุด</p>
+                                    </div>
+                                    <div class="text-[10px] text-japandi-oak flex items-center gap-1 font-medium"><i class="fa-solid fa-dumbbell text-japandi-terracotta"></i> มีฟิตเนสในอาคาร</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. BOTTOM REGISTER CTA -->
+        <section id="register" class="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto reveal">
+            <div class="bg-white rounded-3xl p-8 sm:p-12 japandi-border shadow-xl text-center space-y-6 relative overflow-hidden">
+                <div class="w-16 h-16 rounded-full bg-japandi-sand text-japandi-terracotta flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-file-signature"></i></div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-japandi-oak">พร้อมย้ายเข้าสู่ เทาทอง Residence แล้วหรือยัง?</h2>
+                <p class="text-japandi-muted text-sm max-w-lg mx-auto">
+                    ลงทะเบียนออนไลน์เพื่อสำรองห้องพักและกรอกข้อมูลผู้เช่าล่วงหน้า ระบบจะคัดกรองตึกตามเพศให้อัตโนมัติเพื่อความสะดวกและรวดเร็ว
+                </p>
+                <div class="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
+                    <button onclick="openRegistrationModal()" class="w-full sm:w-auto px-8 py-3.5 rounded-full bg-japandi-terracotta text-white font-medium hover:bg-japandi-terracotta-dark transition shadow-md flex items-center justify-center gap-2">
+                        <span>เริ่มลงทะเบียนผู้เช่าใหม่</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-japandi-oak text-japandi-sand py-12 border-t border-japandi-sand">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-japandi-terracotta text-white flex items-center justify-center font-bold text-sm">TT</div>
+                        <span class="text-lg font-bold text-white">เทาทอง Residence</span>
+                    </div>
+                    <p class="text-xs text-japandi-wood/80 leading-relaxed">หอพักนิสิตและบุคลากร สไตล์ Japandi เรียบง่าย อบอุ่น พร้อมสิ่งอำนวยความสะดวกครบวงจร</p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-white mb-3">อาคารหอพัก</h4>
+                    <ul class="space-y-2 text-xs text-japandi-wood/80">
+                        <li><a href="#buildings" class="hover:text-white transition">เทาทอง 1 (หอชาย)</a></li>
+                        <li><a href="#buildings" class="hover:text-white transition">เทาทอง 2 (หอหญิง)</a></li>
+                        <li><a href="#buildings" class="hover:text-white transition">เทาทอง 3 (หอหญิง)</a></li>
+                        <li><a href="#buildings" class="hover:text-white transition">เทาทอง 4 (หอหญิง)</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-white mb-3">การติดต่อ</h4>
+                    <ul class="space-y-2 text-xs text-japandi-wood/80">
+                        <li><i class="fa-solid fa-phone mr-2"></i> 02-123-4567 / 081-987-6543</li>
+                        <li><i class="fa-solid fa-envelope mr-2"></i> info@taothong-residence.com</li>
+                        <li><i class="fa-brands fa-line mr-2"></i> @taothong_dorm</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-white mb-3">เวลาทำการสำนักงาน</h4>
+                    <p class="text-xs text-japandi-wood/80">จันทร์ - อาทิตย์: 08:30 - 18:30 น.<br>(เจ้าหน้าที่รักษาความปลอดภัยดูแล 24 ชม.)</p>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-white/10 text-center text-xs text-japandi-wood/70">
+                &copy; 2026 Tao Thong Residence. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- MULTI-STEP REGISTRATION MODAL -->
+    <div id="registration-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm items-start justify-center p-4 sm:p-6 overflow-y-auto" onclick="if (event.target === this) closeRegistrationModal()">
+        <div class="bg-japandi-bg rounded-3xl w-full max-w-3xl japandi-border shadow-2xl overflow-hidden my-8">
+
+            <!-- Modal Header -->
+            <div class="bg-white px-6 py-4 border-b border-japandi-sand flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-japandi-terracotta text-white flex items-center justify-center font-bold text-xs">TT</div>
+                    <div>
+                        <h3 class="text-base font-bold text-japandi-oak">แบบฟอร์มลงทะเบียนผู้เช่าหอพักเทาทอง</h3>
+                        <p class="text-xs text-japandi-muted">Tao Thong Residence Tenant Application</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeRegistrationModal()" aria-label="ปิด" class="w-8 h-8 rounded-full bg-japandi-bg text-japandi-oak hover:bg-japandi-sand flex items-center justify-center text-sm transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Progress -->
+            <div id="step-progress" class="bg-japandi-sand/40 px-6 py-3 border-b border-japandi-sand">
+                <div class="flex justify-between items-center gap-1 text-[10px] sm:text-xs font-medium text-japandi-oak max-w-xl mx-auto">
+                    <span id="step-lbl-1">1. บัญชีผู้ใช้</span>
+                    <i class="fa-solid fa-angle-right text-[10px] text-japandi-muted"></i>
+                    <span id="step-lbl-2">2. ข้อมูลส่วนตัว</span>
+                    <i class="fa-solid fa-angle-right text-[10px] text-japandi-muted"></i>
+                    <span id="step-lbl-3">3. ติดต่อ & ผู้ปกครอง</span>
+                    <i class="fa-solid fa-angle-right text-[10px] text-japandi-muted"></i>
+                    <span id="step-lbl-4">4. ยานพาหนะ</span>
+                    <i class="fa-solid fa-angle-right text-[10px] text-japandi-muted"></i>
+                    <span id="step-lbl-5">5. สรุป</span>
+                </div>
+                <div class="w-full bg-white h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div id="step-progress-bar" class="bg-japandi-terracotta h-full transition-all duration-300" style="width: 20%"></div>
+                </div>
+            </div>
+
+            <form id="tenant-registration-form" onsubmit="handleFormSubmit(event)" novalidate class="p-6 sm:p-8">
+
+                <!-- STEP 1: ACCOUNT + GENDER -->
+                <div id="form-step-1" class="form-step space-y-6">
+                    <div class="text-center max-w-md mx-auto">
+                        <h4 class="text-lg font-bold text-japandi-oak">ขั้นตอนที่ 1: บัญชีผู้ใช้ & คัดกรองอาคารตามเพศ</h4>
+                        <p class="text-xs text-japandi-muted">ระบุข้อมูลเบื้องต้นและเลือกเพศ ระบบจะจัดสรรหอพักที่ถูกต้องให้อัตโนมัติ</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label" for="first-name">ชื่อจริง *</label>
+                            <input type="text" id="first-name" name="first_name" required class="form-input" placeholder="สมชาย">
+                        </div>
+                        <div>
+                            <label class="form-label" for="last-name">นามสกุล *</label>
+                            <input type="text" id="last-name" name="last_name" required class="form-input" placeholder="ใจดี">
+                        </div>
+                        <div>
+                            <label class="form-label" for="reg-email">อีเมล (Email) *</label>
+                            <input type="email" id="reg-email" name="email" required class="form-input" placeholder="example@email.com">
+                        </div>
+                        <div>
+                            <label class="form-label" for="reg-phone">เบอร์โทรศัพท์ *</label>
+                            <input type="tel" id="reg-phone" name="phone" required pattern="0[0-9]{8,9}" maxlength="10" class="form-input" placeholder="0812345678">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="reg-password">รหัสผ่าน (Password) *</label>
+                            <input type="password" id="reg-password" name="password" required minlength="6" class="form-input" placeholder="อย่างน้อย 6 ตัวอักษร">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label mb-2">เพศ (ตามบัตรประชาชน - ใช้คัดกรองโซนหอพัก) *</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="gender" value="Male" onchange="onGenderSelect('Male')" class="peer sr-only">
+                                <div class="p-4 rounded-2xl border-2 border-japandi-sand peer-checked:border-blue-600 peer-checked:bg-blue-50/50 peer-focus-visible:ring-2 peer-focus-visible:ring-japandi-terracotta hover:bg-white transition text-center">
+                                    <i class="fa-solid fa-mars text-2xl text-blue-600 mb-2"></i>
+                                    <span class="block text-sm font-bold text-japandi-oak">ชาย (Male)</span>
+                                    <span class="text-[10px] text-japandi-muted block mt-1">กำหนดสิทธิ์: <b>เทาทอง 1</b></span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="gender" value="Female" onchange="onGenderSelect('Female')" class="peer sr-only">
+                                <div class="p-4 rounded-2xl border-2 border-japandi-sand peer-checked:border-pink-500 peer-checked:bg-pink-50/50 peer-focus-visible:ring-2 peer-focus-visible:ring-japandi-terracotta hover:bg-white transition text-center">
+                                    <i class="fa-solid fa-venus text-2xl text-pink-500 mb-2"></i>
+                                    <span class="block text-sm font-bold text-japandi-oak">หญิง (Female)</span>
+                                    <span class="text-[10px] text-japandi-muted block mt-1">เลือกได้: <b>เทาทอง 2, 3, 4</b></span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="building-selection-box" class="hidden p-4 rounded-2xl bg-white border border-japandi-sand space-y-3">
+                        <label class="block text-xs font-bold text-japandi-oak">อาคารหอพักที่ได้รับสิทธิ์เลือก:</label>
+
+                        <div id="male-building-notice" class="hidden p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-blue-600 text-base"></i>
+                            <span>สำหรับผู้สมัครเพศชาย ระบบได้กำหนดสิทธิ์เข้าพัก <b>หอพักเทาทอง 1</b> เรียบร้อยแล้ว</span>
+                        </div>
+
+                        <div id="female-building-options" class="hidden grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="building_choice" value="เทาทอง 2" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-japandi-sand peer-checked:border-pink-500 peer-checked:bg-pink-50 text-center transition hover:bg-japandi-bg">
+                                    <span class="block text-xs font-bold">เทาทอง 2</span>
+                                    <span class="text-[10px] text-japandi-muted">Studio / 1-Bed</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="building_choice" value="เทาทอง 3" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-japandi-sand peer-checked:border-pink-500 peer-checked:bg-pink-50 text-center transition hover:bg-japandi-bg">
+                                    <span class="block text-xs font-bold">เทาทอง 3</span>
+                                    <span class="text-[10px] text-japandi-muted">1-Bed Deluxe</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="building_choice" value="เทาทอง 4" class="peer sr-only">
+                                <div class="p-3 rounded-xl border border-japandi-sand peer-checked:border-pink-500 peer-checked:bg-pink-50 text-center transition hover:bg-japandi-bg">
+                                    <span class="block text-xs font-bold">เทาทอง 4</span>
+                                    <span class="text-[10px] text-japandi-muted">Loft Suite</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: PERSONAL INFO -->
+                <div id="form-step-2" class="form-step hidden space-y-4">
+                    <h4 class="text-sm font-bold text-japandi-oak border-b border-japandi-sand pb-2">ข้อมูลส่วนตัวผู้เช่า (Personal Information)</h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label" for="name-th">ชื่อ - นามสกุล (ภาษาไทย) *</label>
+                            <input type="text" id="name-th" name="name_th" required class="form-input" placeholder="นาย/นางสาว สมชาย ใจดี">
+                        </div>
+                        <div>
+                            <label class="form-label" for="name-en">ชื่อ - นามสกุล (ภาษาอังกฤษ ตามบัตรประชาชน) *</label>
+                            <input type="text" id="name-en" name="name_en" required class="form-input" placeholder="Mr./Ms. Somchai Jaidee">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="id-card">เลขประจำตัวประชาชน 13 หลัก *</label>
+                            <input type="text" id="id-card" name="id_card" inputmode="numeric" maxlength="13" required pattern="[0-9]{13}" class="form-input" placeholder="1234567890123">
+                        </div>
+                        <div>
+                            <label class="form-label" for="dob">วัน เดือน ปีเกิด *</label>
+                            <input type="date" id="dob" name="dob" required onchange="calculateAge()" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label" for="calculated-age">อายุ (ปี)</label>
+                            <input type="text" id="calculated-age" name="age" readonly tabindex="-1" class="form-input !bg-japandi-sand/30 font-bold text-japandi-terracotta" placeholder="คำนวณอัตโนมัติ">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="occupation">อาชีพ / สถานศึกษา *</label>
+                            <input type="text" id="occupation" name="occupation" required class="form-input" placeholder="ชื่อมหาวิทยาลัย, คณะ, ชั้นปี หรือสถานที่ทำงาน">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" for="home-address">ที่อยู่ตามทะเบียนบ้านปัจจุบัน *</label>
+                        <textarea id="home-address" name="home_address" rows="2" required class="form-input" placeholder="บ้านเลขที่, หมู่, ซอย, ถนน, ตำบล/แขวง, อำเภอ/เขต, จังหวัด, รหัสไปรษณีย์"></textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 3: CONTACT + EMERGENCY -->
+                <div id="form-step-3" class="form-step hidden space-y-4">
+                    <h4 class="text-sm font-bold text-japandi-oak border-b border-japandi-sand pb-2">ข้อมูลติดต่อผู้เช่า (Contact Information)</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label" for="mobile">เบอร์โทรศัพท์มือถือผู้เช่า *</label>
+                            <input type="tel" id="mobile" name="mobile" required pattern="0[0-9]{8,9}" maxlength="10" class="form-input" placeholder="0812345678">
+                        </div>
+                        <div>
+                            <label class="form-label" for="line-id">ไอดีไลน์ (Line ID)</label>
+                            <input type="text" id="line-id" name="line_id" class="form-input" placeholder="ไม่บังคับ (ใช้อีเมลจากขั้นตอนที่ 1 ได้)">
+                        </div>
+                    </div>
+
+                    <h4 class="text-sm font-bold text-japandi-oak border-b border-japandi-sand pb-2 pt-4 flex items-center gap-2">
+                        ข้อมูลผู้ปกครอง / บุคคลติดต่อฉุกเฉิน
+                        <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-japandi-terracotta/10 text-japandi-terracotta">สำคัญมาก</span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="emergency-name">ชื่อ - นามสกุล *</label>
+                            <input type="text" id="emergency-name" name="emergency_name" required class="form-input" placeholder="นางสมศรี ใจดี">
+                        </div>
+                        <div>
+                            <label class="form-label" for="emergency-relation">ความเกี่ยวข้อง *</label>
+                            <select id="emergency-relation" name="emergency_relation" required class="form-input">
+                                <option value="">-- เลือก --</option>
+                                <option>บิดา</option>
+                                <option>มารดา</option>
+                                <option>พี่น้อง</option>
+                                <option>ญาติ</option>
+                                <option>ผู้ปกครองตามกฎหมาย</option>
+                                <option>อื่น ๆ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label" for="emergency-phone">เบอร์โทรติดต่อฉุกเฉิน *</label>
+                            <input type="tel" id="emergency-phone" name="emergency_phone" required pattern="0[0-9]{8,9}" maxlength="10" class="form-input" placeholder="0891234567">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="form-label" for="emergency-address">ที่อยู่ผู้ปกครอง *</label>
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" id="same-address" onchange="copyHomeAddress()" class="accent-[#C86D51]">
+                                <label for="same-address" class="text-[11px] text-japandi-muted cursor-pointer">ใช้ที่อยู่เดียวกับผู้เช่า</label>
+                            </div>
+                            <textarea id="emergency-address" name="emergency_address" rows="2" required class="form-input" placeholder="ที่อยู่สำหรับติดต่อกรณีฉุกเฉิน"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: VEHICLE -->
+                <div id="form-step-4" class="form-step hidden space-y-4">
+                    <h4 class="text-sm font-bold text-japandi-oak border-b border-japandi-sand pb-2">ข้อมูลรถที่นำมาจอด (ถ้ามี)</h4>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="vehicle_type" value="none" checked onchange="onVehicleSelect()" class="peer sr-only">
+                            <div class="p-4 rounded-2xl border-2 border-japandi-sand peer-checked:border-japandi-terracotta peer-checked:bg-white text-center transition hover:bg-white">
+                                <i class="fa-solid fa-ban text-xl text-japandi-muted mb-1"></i>
+                                <span class="block text-xs font-bold">ไม่มีรถ</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="vehicle_type" value="car" onchange="onVehicleSelect()" class="peer sr-only">
+                            <div class="p-4 rounded-2xl border-2 border-japandi-sand peer-checked:border-japandi-terracotta peer-checked:bg-white text-center transition hover:bg-white">
+                                <i class="fa-solid fa-car-side text-xl text-japandi-terracotta mb-1"></i>
+                                <span class="block text-xs font-bold">รถยนต์</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="vehicle_type" value="motorcycle" onchange="onVehicleSelect()" class="peer sr-only">
+                            <div class="p-4 rounded-2xl border-2 border-japandi-sand peer-checked:border-japandi-terracotta peer-checked:bg-white text-center transition hover:bg-white">
+                                <i class="fa-solid fa-motorcycle text-xl text-japandi-terracotta mb-1"></i>
+                                <span class="block text-xs font-bold">รถจักรยานยนต์</span>
+                            </div>
+                        </label>
+                    </div>
+                    <div id="vehicle-fields" class="hidden grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label" for="vehicle-brand">ยี่ห้อ *</label>
+                            <input type="text" id="vehicle-brand" name="vehicle_brand" class="form-input" placeholder="Honda">
+                        </div>
+                        <div>
+                            <label class="form-label" for="vehicle-color">สี *</label>
+                            <input type="text" id="vehicle-color" name="vehicle_color" class="form-input" placeholder="ขาว">
+                        </div>
+                        <div>
+                            <label class="form-label" for="vehicle-plate">เลขทะเบียนรถ *</label>
+                            <input type="text" id="vehicle-plate" name="vehicle_plate" class="form-input" placeholder="1กข 1234 กรุงเทพฯ">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 5: SUMMARY -->
+                <div id="form-step-5" class="form-step hidden space-y-4">
+                    <h4 class="text-sm font-bold text-japandi-oak border-b border-japandi-sand pb-2">สรุปข้อมูลการลงทะเบียน</h4>
+                    <div id="summary-content" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                    <label class="flex items-start gap-2 text-xs text-japandi-oak cursor-pointer pt-2">
+                        <input type="checkbox" id="consent" required class="mt-0.5 accent-[#C86D51]">
+                        <span>ข้าพเจ้ายืนยันว่าข้อมูลข้างต้นเป็นความจริง และยินยอมให้หอพักเทาทองจัดเก็บข้อมูลเพื่อใช้ในการทำสัญญาเช่า</span>
+                    </label>
+                </div>
+
+                <!-- SUCCESS -->
+                <div id="form-success" class="hidden text-center py-8 space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl"><i class="fa-solid fa-check"></i></div>
+                    <h4 class="text-xl font-bold text-japandi-oak">ส่งใบสมัครเรียบร้อยแล้ว</h4>
+                    <p class="text-sm text-japandi-muted max-w-sm mx-auto">ขอบคุณที่สนใจหอพัก <b id="success-building" class="text-japandi-terracotta"></b> เจ้าหน้าที่จะติดต่อกลับทางอีเมลหรือเบอร์โทรที่ให้ไว้ภายใน 1-2 วันทำการ</p>
+                    <button type="button" onclick="closeRegistrationModal()" class="px-6 py-2.5 rounded-full bg-japandi-oak text-white text-sm hover:bg-black transition">กลับสู่หน้าหลัก</button>
+                </div>
+
+                <p id="form-error" class="hidden mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700"></p>
+
+                <!-- NAV BUTTONS -->
+                <div id="form-nav" class="flex items-center justify-between pt-6 mt-6 border-t border-japandi-sand">
+                    <button type="button" id="btn-prev" onclick="prevStep()" class="px-5 py-2.5 rounded-full border border-japandi-sand bg-white text-japandi-oak text-sm hover:bg-japandi-sand/50 transition invisible">
+                        <i class="fa-solid fa-arrow-left text-xs mr-1"></i> ย้อนกลับ
+                    </button>
+                    <button type="button" id="btn-next" onclick="nextStep()" class="px-6 py-2.5 rounded-full bg-japandi-terracotta text-white text-sm font-medium hover:bg-japandi-terracotta-dark transition shadow-md">
+                        ถัดไป <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+                    </button>
+                    <button type="submit" id="btn-submit" class="hidden px-6 py-2.5 rounded-full bg-japandi-oak text-white text-sm font-medium hover:bg-black transition shadow-md">
+                        <i class="fa-solid fa-paper-plane text-xs mr-1"></i> ยืนยันการลงทะเบียน
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const TOTAL_STEPS = 5;
+        let currentStep = 1;
+
+        const $ = (id) => document.getElementById(id);
+        const form = $('tenant-registration-form');
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function show(el, display = 'block') {
+            el.classList.remove('hidden');
+            if (display !== 'block') el.classList.add(display);
+        }
+        function hide(el, display = 'block') {
+            el.classList.add('hidden');
+            if (display !== 'block') el.classList.remove(display);
+        }
+
+        // ---------- Room filter tabs ----------
+        function filterRooms(type) {
+            document.querySelectorAll('.room-tab').forEach((tab) => {
+                const active = tab.dataset.filter === type;
+                tab.classList.toggle('bg-japandi-oak', active);
+                tab.classList.toggle('text-white', active);
+                tab.classList.toggle('bg-japandi-bg', !active);
+                tab.classList.toggle('text-japandi-oak', !active);
+                tab.classList.toggle('hover:bg-japandi-sand', !active);
+            });
+            let visible = 0;
+            document.querySelectorAll('.room-card').forEach((card) => {
+                const match = type === 'all' || card.classList.contains(type);
+                card.classList.toggle('hidden', !match);
+                if (match) visible++;
+            });
+            $('no-room-msg').classList.toggle('hidden', visible > 0);
+        }
+
+        // ---------- Map highlight ----------
+        function highlightMapBuilding(n) {
+            document.querySelectorAll('.map-pin').forEach((pin) => {
+                const active = pin.id === 'pin-' + n;
+                pin.classList.toggle('scale-105', active);
+                pin.classList.toggle('shadow-2xl', active);
+                pin.classList.toggle('ring-4', active);
+                pin.classList.toggle('ring-japandi-terracotta/40', active);
+                pin.classList.toggle('opacity-50', !active);
+            });
+            document.querySelectorAll('.map-btn').forEach((btn) => {
+                const active = btn.id === 'map-btn-' + n;
+                btn.classList.toggle('bg-japandi-sand', active);
+                btn.classList.toggle('border-japandi-terracotta', active);
+                btn.classList.toggle('bg-japandi-bg', !active);
+            });
+        }
+
+        // ---------- Modal ----------
+        function openRegistrationModal() {
+            const modal = $('registration-modal');
+            show(modal, 'flex');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => $('first-name').focus(), 50);
+        }
+
+        function closeRegistrationModal() {
+            hide($('registration-modal'), 'flex');
+            document.body.style.overflow = '';
+            if (!$('form-success').classList.contains('hidden')) resetForm();
+        }
+
+        function startRegistrationWithBuilding(building, gender) {
+            openRegistrationModal();
+            const genderInput = form.querySelector(`input[name="gender"][value="${gender}"]`);
+            if (genderInput) {
+                genderInput.checked = true;
+                onGenderSelect(gender);
+            }
+            if (gender === 'Female') {
+                const b = form.querySelector(`input[name="building_choice"][value="${building}"]`);
+                if (b) b.checked = true;
+            }
+        }
+
+        function resetForm() {
+            form.reset();
+            hide($('form-success'));
+            show($('step-progress'));
+            show($('form-nav'), 'flex');
+            hide($('building-selection-box'));
+            $('calculated-age').value = '';
+            onVehicleSelect();
+            goToStep(1);
+        }
+
+        // ---------- Gender => building rule ----------
+        // ชาย  -> เทาทอง 1 เท่านั้น
+        // หญิง -> เลือกได้ เทาทอง 2, 3, 4
+        function onGenderSelect(gender) {
+            show($('building-selection-box'));
+            if (gender === 'Male') {
+                show($('male-building-notice'), 'flex');
+                hide($('female-building-options'), 'grid');
+                form.querySelectorAll('input[name="building_choice"]').forEach((r) => (r.checked = false));
+            } else {
+                hide($('male-building-notice'), 'flex');
+                show($('female-building-options'), 'grid');
+            }
+        }
+
+        function getSelectedBuilding() {
+            const gender = form.querySelector('input[name="gender"]:checked')?.value;
+            if (gender === 'Male') return 'เทาทอง 1';
+            return form.querySelector('input[name="building_choice"]:checked')?.value || '';
+        }
+
+        // ---------- Helpers ----------
+        function calculateAge() {
+            const value = $('dob').value;
+            if (!value) { $('calculated-age').value = ''; return; }
+            const dob = new Date(value);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+            $('calculated-age').value = age >= 0 ? age + ' ปี' : '';
+        }
+
+        function copyHomeAddress() {
+            const target = $('emergency-address');
+            if ($('same-address').checked) {
+                target.value = $('home-address').value;
+                target.readOnly = true;
+            } else {
+                target.readOnly = false;
+            }
+        }
+
+        function onVehicleSelect() {
+            const type = form.querySelector('input[name="vehicle_type"]:checked')?.value || 'none';
+            const fields = $('vehicle-fields');
+            const inputs = fields.querySelectorAll('input');
+            if (type === 'none') {
+                hide(fields, 'grid');
+                inputs.forEach((i) => { i.required = false; i.value = ''; });
+            } else {
+                show(fields, 'grid');
+                inputs.forEach((i) => (i.required = true));
+            }
+        }
+
+        // Thai national ID checksum
+        function isValidThaiId(id) {
+            if (!/^\d{13}$/.test(id)) return false;
+            let sum = 0;
+            for (let i = 0; i < 12; i++) sum += Number(id[i]) * (13 - i);
+            return (11 - (sum % 11)) % 10 === Number(id[12]);
+        }
+
+        function showError(msg) {
+            const el = $('form-error');
+            el.textContent = msg;
+            el.classList.toggle('hidden', !msg);
+        }
+
+        // ---------- Step validation ----------
+        function validateStep(step) {
+            showError('');
+            const container = $('form-step-' + step);
+            const fields = container.querySelectorAll('input:not([type="radio"]), textarea, select');
+            for (const field of fields) {
+                if (!field.checkValidity()) {
+                    field.reportValidity();
+                    return false;
+                }
+            }
+            if (step === 1) {
+                const gender = form.querySelector('input[name="gender"]:checked');
+                if (!gender) { showError('กรุณาเลือกเพศเพื่อคัดกรองอาคารหอพัก'); return false; }
+                if (!getSelectedBuilding()) { showError('กรุณาเลือกอาคารหอพัก (เทาทอง 2, 3 หรือ 4)'); return false; }
+            }
+            if (step === 2) {
+                if (!isValidThaiId($('id-card').value)) { showError('เลขประจำตัวประชาชนไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง'); $('id-card').focus(); return false; }
+                if (new Date($('dob').value) > new Date()) { showError('วันเกิดต้องไม่เป็นวันในอนาคต'); $('dob').focus(); return false; }
+            }
+            return true;
+        }
+
+        function goToStep(step) {
+            currentStep = step;
+            for (let i = 1; i <= TOTAL_STEPS; i++) {
+                $('form-step-' + i).classList.toggle('hidden', i !== step);
+                const lbl = $('step-lbl-' + i);
+                lbl.className = i === step ? 'text-japandi-terracotta font-bold' : i < step ? 'text-japandi-oak' : 'text-japandi-muted';
+            }
+            $('step-progress-bar').style.width = (step / TOTAL_STEPS) * 100 + '%';
+            $('btn-prev').classList.toggle('invisible', step === 1);
+            $('btn-next').classList.toggle('hidden', step === TOTAL_STEPS);
+            $('btn-submit').classList.toggle('hidden', step !== TOTAL_STEPS);
+            if (step === TOTAL_STEPS) renderSummary();
+            showError('');
+            $('registration-modal').scrollTop = 0;
+        }
+
+        function nextStep() {
+            if (!validateStep(currentStep)) return;
+            if (currentStep === 1 && !$('mobile').value) $('mobile').value = $('reg-phone').value;
+            if (currentStep === 1 && !$('name-th').value) $('name-th').value = `${$('first-name').value} ${$('last-name').value}`.trim();
+            if (currentStep < TOTAL_STEPS) goToStep(currentStep + 1);
+        }
+
+        function prevStep() {
+            if (currentStep > 1) goToStep(currentStep - 1);
+        }
+
+        // ---------- Summary ----------
+        function collectFormData() {
+            const fd = new FormData(form);
+            const data = Object.fromEntries(fd.entries());
+            delete data.password;
+            data.building = getSelectedBuilding();
+            return data;
+        }
+
+        function renderSummary() {
+            const d = collectFormData();
+            const vehicleLabel = { none: 'ไม่มี', car: 'รถยนต์', motorcycle: 'รถจักรยานยนต์' }[d.vehicle_type] || '-';
+            const groups = [
+                ['อาคารที่สมัคร', [['อาคาร', d.building], ['เพศ', d.gender === 'Male' ? 'ชาย' : 'หญิง'], ['อีเมล', d.email]]],
+                ['ข้อมูลส่วนตัว', [['ชื่อ (TH)', d.name_th], ['ชื่อ (EN)', d.name_en], ['เลขบัตร', d.id_card], ['วันเกิด / อายุ', `${d.dob} (${d.age})`], ['อาชีพ / สถานศึกษา', d.occupation], ['ที่อยู่', d.home_address]]],
+                ['ข้อมูลติดต่อ', [['มือถือ', d.mobile], ['Line ID', d.line_id || '-']]],
+                ['ผู้ติดต่อฉุกเฉิน', [['ชื่อ', `${d.emergency_name} (${d.emergency_relation})`], ['โทร', d.emergency_phone], ['ที่อยู่', d.emergency_address]]],
+                ['ยานพาหนะ', d.vehicle_type === 'none' ? [['ประเภท', vehicleLabel]] : [['ประเภท', vehicleLabel], ['ยี่ห้อ / สี', `${d.vehicle_brand} / ${d.vehicle_color}`], ['ทะเบียน', d.vehicle_plate]]],
+            ];
+            $('summary-content').innerHTML = groups.map(([title, rows]) => `
+                <div class="bg-white rounded-2xl p-4 japandi-border">
+                    <h5 class="text-xs font-bold text-japandi-terracotta mb-2">${escapeHtml(title)}</h5>
+                    <dl class="space-y-1 text-xs">
+                        ${rows.map(([k, v]) => `<div class="flex gap-2"><dt class="text-japandi-muted w-28 shrink-0">${escapeHtml(k)}</dt><dd class="text-japandi-oak font-medium break-words min-w-0">${escapeHtml(v || '-')}</dd></div>`).join('')}
+                    </dl>
+                </div>`).join('');
+        }
+
+        // ---------- Submit ----------
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            if (currentStep !== TOTAL_STEPS) { nextStep(); return; }
+            if (!$('consent').checked) { showError('กรุณายืนยันความถูกต้องของข้อมูลก่อนส่ง'); return; }
+
+            const payload = collectFormData();
+            payload.password = $('reg-password').value;
+            // TODO: เชื่อมต่อ backend จริง เช่น fetch('/api/...', { method: 'POST', body: JSON.stringify(payload) })
+            console.log('Registration payload:', payload);
+
+            for (let i = 1; i <= TOTAL_STEPS; i++) $('form-step-' + i).classList.add('hidden');
+            hide($('step-progress'));
+            hide($('form-nav'), 'flex');
+            $('success-building').textContent = payload.building;
+            show($('form-success'));
+        }
+
+        // ---------- Init ----------
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !$('registration-modal').classList.contains('hidden')) closeRegistrationModal();
+        });
+        $('id-card').addEventListener('input', (e) => (e.target.value = e.target.value.replace(/\D/g, '')));
+        $('home-address').addEventListener('input', () => { if ($('same-address').checked) $('emergency-address').value = $('home-address').value; });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+        filterRooms('all');
+        goToStep(1);
+    </script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AuthPage from './pages/AuthPage'
+import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
-import RegisterWizard from './pages/RegisterDorm/RegisterWizard'
+import ApplyPage from './pages/ApplyPage'
 import RoomSelection from './pages/RoomSelection'
 import Payment from './pages/Payment'
 import Receipt from './pages/Receipt'
@@ -9,20 +10,15 @@ import FeedbackReview from './pages/FeedbackReview'
 import MainLayout from './components/Layout/MainLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import DormServices from './DormServices' // นำเข้า Component บริการค่าไฟและแจ้งซ่อม
-import AdminLogin from './admin/AdminLogin'
-import AdminLayout from './admin/AdminLayout'
-import Overview from './admin/pages/Overview'
-import AdminRooms from './admin/pages/Rooms'
-import AdminBookings from './admin/pages/Bookings'
-import AdminMaintenance from './admin/pages/Maintenance'
-import AdminUsers from './admin/pages/Users'
-import AdminReviews from './admin/pages/Reviews'   // ปรับ path ตามที่ App.jsx อยู่
+import AdminRoute from './components/AdminRoute'
+import AdminDashboard from './pages/Admin/AdminDashboard' // ระบบผู้จัดการหอพัก (จากโปรเจกต์ kit)
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<AuthPage />} />
+      <Route path="/apply" element={<ApplyPage />} />
 
       <Route
         path="/app"
@@ -33,7 +29,17 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="register" element={<RegisterWizard />} />
+        <Route
+          path="admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        {/* ฟอร์มเก่า → ใช้หน้าลงทะเบียนใหม่ / จัดการข้อมูลที่หน้าหลักผู้เช่า */}
+        <Route path="register" element={<Navigate to="/apply" replace />} />
+        <Route path="profile" element={<Navigate to="/app" replace />} />
         <Route path="rooms" element={<RoomSelection />} />
         <Route path="payment" element={<Payment />} />
         <Route path="receipt" element={<Receipt />} />
@@ -45,17 +51,11 @@ export default function App() {
         <Route path="maintenance" element={<DormServices />} />
       </Route>
 
-      {/* ระบบหลังบ้านสำหรับผู้ดูแล (ต้องล็อกอินด้วยบัญชี role = ADMIN) */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Overview />} />
-        <Route path="rooms" element={<AdminRooms />} />
-        <Route path="bookings" element={<AdminBookings />} />
-        <Route path="maintenance" element={<AdminMaintenance />} />
-        <Route path="users" element={<AdminUsers />} />
-      </Route>
+      {/* ลิงก์หลังบ้านแบบเดิม → ผู้จัดการหอพักล็อกอินที่ /login แล้วใช้ /app/admin */}
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/admin/*" element={<Navigate to="/app/admin" replace />} />
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

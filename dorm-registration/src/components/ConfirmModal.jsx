@@ -2,12 +2,12 @@ export default function ConfirmModal({ open, title, description, confirmLabel = 
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
     >
-      <div className="card max-w-sm w-full">
+      <div className="card max-w-sm w-full shadow-2xl">
         <h3 id="confirm-modal-title" className="font-display text-lg font-semibold mb-2">
           {title}
         </h3>

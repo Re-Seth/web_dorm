@@ -5,6 +5,7 @@ import RoomCell from '../components/RoomCell'
 import ConfirmModal from '../components/ConfirmModal'
 import { useRegistration } from '../context/RegistrationContext'
 import api, { errMsg } from '../studentApi'
+import { GENDER_DORMS } from '../data/landing'
 
 export default function RoomSelection() {
   const [dormId, setDormId] = useState(DORMS[0].id)
@@ -13,14 +14,26 @@ export default function RoomSelection() {
   const [error, setError] = useState('')
   const [availability, setAvailability] = useState({})
   const [refreshKey, setRefreshKey] = useState(0)
+  const [profile, setProfile] = useState(null)
   const { student, father, mother, selectRoom, confirmBooking } = useRegistration()
   const navigate = useNavigate()
 
+  // ผู้ที่กรอกโปรไฟล์ผู้เช่าแล้ว เห็นเฉพาะอาคารตามเพศ (ชาย → เทาทอง 1 / หญิง → เทาทอง 2-4)
+  const allowedDorms = profile ? DORMS.filter((d) => GENDER_DORMS[profile.gender]?.includes(d.id)) : DORMS
   const dorm = DORMS.find((d) => d.id === dormId)
   const rooms = useMemo(
     () => getRoomsForFloor(dormId, floor, availability),
     [dormId, floor, availability],
   )
+
+  useEffect(() => {
+    api.get('/api/profile').then(({ data }) => {
+      if (!data) return
+      setProfile(data)
+      setDormId(data.dormId)
+      setFloor(1)
+    }).catch(() => {})
+  }, [])
 
   // ดึงจำนวนผู้พักจริงของชั้นที่เลือกจาก backend
   useEffect(() => {
@@ -47,6 +60,8 @@ export default function RoomSelection() {
   async function handleConfirm() {
     setError('')
     const parent = father.firstName ? father : mother
+    const parentName = profile ? profile.emergencyName : `${parent.prefix}${parent.firstName} ${parent.lastName}`.trim()
+    const parentPhone = profile ? profile.emergencyPhone : parent.phone
     try {
       // บันทึกการจองลงฐานข้อมูล (backend ตรวจห้องเต็ม/ซ้ำให้)
       await api.post('/api/bookings', {
@@ -55,8 +70,8 @@ export default function RoomSelection() {
         roomCode: pendingRoom.code,
         studentName: `${student.prefix}${student.firstName} ${student.lastName}`.trim(),
         phone: student.phone,
-        parentName: `${parent.prefix}${parent.firstName} ${parent.lastName}`.trim(),
-        parentPhone: parent.phone,
+        parentName,
+        parentPhone,
       })
     } catch (e) {
       setError(errMsg(e))
@@ -76,19 +91,19 @@ export default function RoomSelection() {
       <p className="text-bone/50 mb-6">เลือกหอพัก ชั้น และห้องที่ต้องการ</p>
 
       {error && (
-        <p role="alert" className="text-sm text-room-full bg-room-full/10 border border-room-full/30 rounded-md px-3 py-2 mb-4">
+        <p role="alert" className="text-sm text-room-full bg-room-full/10 border border-room-full/30 rounded-xl px-3 py-2 mb-4">
           {error}
         </p>
       )}
 
       {/* dorm tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {DORMS.map((d) => (
+        {allowedDorms.map((d) => (
           <button
             key={d.id}
             onClick={() => handleDormChange(d.id)}
             className={
-              'px-4 py-2 rounded-md text-sm border transition-colors ' +
+              'px-4 py-2 rounded-full text-sm border transition-colors ' +
               (d.id === dormId
                 ? 'bg-gold text-charcoal border-gold font-medium'
                 : 'border-charcoal-line text-bone/70 hover:border-gold/50')
@@ -106,7 +121,7 @@ export default function RoomSelection() {
             key={f}
             onClick={() => setFloor(f)}
             className={
-              'w-10 h-10 rounded-md text-sm border font-mono transition-colors ' +
+              'w-10 h-10 rounded-full text-sm border font-mono transition-colors ' +
               (f === floor
                 ? 'bg-charcoal-soft border-gold text-gold'
                 : 'border-charcoal-line text-bone/60 hover:border-gold/50')

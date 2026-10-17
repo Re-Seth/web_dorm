@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
+import studentApi from './studentApi';
+import { Activity, ClipboardList, Gauge, PlugZap, Receipt, Send, Wrench, Zap } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const socket = io(API_BASE);
 const API_URL = `${API_BASE}/api/maintenance`;
+
+const STATUS_BADGE = {
+  PENDING: ['รอดำเนินการ', 'bg-amber-50 text-amber-700 border-amber-200'],
+  IN_PROGRESS: ['กำลังซ่อมแซม', 'bg-sky-50 text-sky-700 border-sky-200'],
+  COMPLETED: ['ซ่อมเสร็จสิ้น', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+};
 
 export default function DormServices() {
   const [power, setPower] = useState({
@@ -46,7 +54,8 @@ export default function DormServices() {
     e.preventDefault();
     if (!title || !description) return;
     try {
-      await axios.post(API_URL, { roomId, title, description });
+      // แนบ token ไปด้วย ผู้จัดการหอพักจะเห็นชื่อผู้แจ้ง
+      await studentApi.post('/api/maintenance', { roomId, title, description });
       setTitle('');
       setDescription('');
       fetchRequests();
@@ -55,148 +64,90 @@ export default function DormServices() {
     }
   };
 
-  const handleUpdateStatus = async (id, status) => {
-    try {
-      await axios.patch(`${API_URL}/${id}/status`, { status });
-      fetchRequests();
-    } catch (err) {
-      alert('ไม่สามารถอัปเดตสถานะได้');
-    }
+  const getStatusBadge = (status) => {
+    const badge = STATUS_BADGE[status];
+    if (!badge) return status;
+    return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${badge[1]}`}>{badge[0]}</span>;
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'PENDING':
-        return <span style={{ color: '#b45309', background: '#fef3c7', padding: '4px 10px', borderRadius: 6, fontWeight: 'bold', fontSize: 13 }}>รอดำเนินการ</span>;
-      case 'IN_PROGRESS':
-        return <span style={{ color: '#1d4ed8', background: '#dbeafe', padding: '4px 10px', borderRadius: 6, fontWeight: 'bold', fontSize: 13 }}>กำลังซ่อมแซม</span>;
-      case 'COMPLETED':
-        return <span style={{ color: '#15803d', background: '#dcfce7', padding: '4px 10px', borderRadius: 6, fontWeight: 'bold', fontSize: 13 }}>ซ่อมเสร็จสิ้น</span>;
-      default:
-        return status;
-    }
-  };
+  const meters = [
+    { label: 'กำลังไฟปัจจุบัน', value: `${power.power} W`, Icon: Zap },
+    { label: 'แรงดัน / กระแส', value: `${power.voltage}V / ${power.current}A`, Icon: Activity },
+    { label: 'หน่วยไฟสะสม', value: `${power.energyUnits} kWh`, Icon: Gauge },
+    { label: 'ประมาณการค่าไฟ', value: `${power.estimatedCost} ฿`, Icon: Receipt },
+  ];
 
   return (
-    <div style={{ maxWidth: 1050, margin: '20px auto', fontFamily: 'sans-serif', color: '#1e293b' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: 24, fontSize: 26, fontWeight: 'bold', color: '#0f172a' }}>
-        ⚡ ระบบจัดการค่าไฟ & แจ้งซ่อม (ห้อง {roomId})
-      </h1>
-
-      {/* กล่องแสดงมิเตอร์ไฟ Real-time */}
-      <div style={{ background: '#0f172a', color: '#ffffff', padding: 24, borderRadius: 12, marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 20, margin: 0, fontWeight: 'bold', color: '#f8fafc' }}>🔌 การใช้ไฟฟ้าแบบ Real-time</h2>
-          <span style={{ color: '#4ade80', fontSize: 14, fontWeight: 'bold' }}>● Live ({power.timestamp})</span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginTop: 16 }}>
-          <div style={{ background: '#1e293b', padding: 16, borderRadius: 8, textAlign: 'center', border: '1px solid #334155' }}>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: 14, fontWeight: '500' }}>กำลังไฟปัจจุบัน</p>
-            <h3 style={{ fontSize: 24, margin: '8px 0', color: '#38bdf8', fontWeight: 'bold' }}>{power.power} W</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: 16, borderRadius: 8, textAlign: 'center', border: '1px solid #334155' }}>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: 14, fontWeight: '500' }}>แรงดัน / กระแส</p>
-            <h3 style={{ fontSize: 24, margin: '8px 0', color: '#f8fafc', fontWeight: 'bold' }}>{power.voltage}V / {power.current}A</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: 16, borderRadius: 8, textAlign: 'center', border: '1px solid #334155' }}>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: 14, fontWeight: '500' }}>หน่วยไฟสะสม</p>
-            <h3 style={{ fontSize: 24, margin: '8px 0', color: '#facc15', fontWeight: 'bold' }}>{power.energyUnits} kWh</h3>
-          </div>
-          <div style={{ background: '#1e293b', padding: 16, borderRadius: 8, textAlign: 'center', border: '1px solid #334155' }}>
-            <p style={{ color: '#94a3b8', margin: 0, fontSize: 14, fontWeight: '500' }}>ประมาณการค่าไฟ</p>
-            <h3 style={{ fontSize: 24, margin: '8px 0', color: '#4ade80', fontWeight: 'bold' }}>{power.estimatedCost} ฿</h3>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div>
+        <span className="text-xs font-semibold uppercase tracking-widest text-gold">Dorm Services</span>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold">ค่าไฟ & แจ้งซ่อม <span className="text-bone/50 font-normal text-lg">(ห้อง {roomId})</span></h1>
       </div>
 
-      {/* ส่วนแจ้งซ่อม */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
-        
+      {/* มิเตอร์ไฟ Real-time */}
+      <section className="relative overflow-hidden rounded-3xl bg-japandi-oak text-japandi-sand p-6 sm:p-8 shadow-xl">
+        <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-japandi-terracotta/25 pointer-events-none" aria-hidden="true" />
+        <div className="relative flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h2 className="font-display text-lg font-bold text-white flex items-center gap-2"><PlugZap size={20} className="text-japandi-wood" /> การใช้ไฟฟ้าแบบ Real-time</h2>
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live ({power.timestamp})
+          </span>
+        </div>
+        <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {meters.map(({ label, value, Icon }) => (
+            <div key={label} className="rounded-2xl bg-white/10 border border-white/10 p-4">
+              <p className="text-xs text-japandi-sand/70 flex items-center gap-1.5"><Icon size={13} /> {label}</p>
+              <p className="font-display text-xl sm:text-2xl font-bold text-white mt-2 tabular-nums">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* แบบฟอร์มแจ้งซ่อม */}
-        <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: 24, borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ marginTop: 0, marginBottom: 18, fontSize: 20, color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
-            🛠️ แบบฟอร์มแจ้งซ่อม
-          </h3>
-          <form onSubmit={handleCreateRequest} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section className="card">
+          <h3 className="font-display text-lg font-bold mb-5 flex items-center gap-2"><Wrench size={18} className="text-gold" /> แบบฟอร์มแจ้งซ่อม</h3>
+          <form onSubmit={handleCreateRequest} className="space-y-4">
             <div>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: '600', color: '#334155' }}>หมายเลขห้อง</label>
-              <input
-                type="number"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #94a3b8', color: '#0f172a', fontSize: 15, background: '#f8fafc', boxSizing: 'border-box' }}
-              />
+              <label className="field-label" htmlFor="svc-room">หมายเลขห้อง</label>
+              <input id="svc-room" type="number" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="field" />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: '600', color: '#334155' }}>อุปกรณ์ที่ชำรุด</label>
-              <input
-                type="text"
-                placeholder="เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #94a3b8', color: '#0f172a', fontSize: 15, background: '#ffffff', boxSizing: 'border-box' }}
-                required
-              />
+              <label className="field-label" htmlFor="svc-title">อุปกรณ์ที่ชำรุด</label>
+              <input id="svc-title" type="text" placeholder="เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว" value={title} onChange={(e) => setTitle(e.target.value)} className="field" required />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: '600', color: '#334155' }}>รายละเอียดอาการ</label>
-              <textarea
-                placeholder="ระบุอาการเพิ่มเติม..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #94a3b8', color: '#0f172a', fontSize: 15, background: '#ffffff', boxSizing: 'border-box' }}
-                required
-              />
+              <label className="field-label" htmlFor="svc-desc">รายละเอียดอาการ</label>
+              <textarea id="svc-desc" placeholder="ระบุอาการเพิ่มเติม..." value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="field" required />
             </div>
-            <button
-              type="submit"
-              style={{ background: '#2563eb', color: '#ffffff', padding: '12px 16px', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 16, marginTop: 4, transition: 'background 0.2s' }}
-            >
-              ส่งแจ้งซ่อม
+            <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
+              <Send size={15} /> ส่งแจ้งซ่อม
             </button>
           </form>
-        </div>
+        </section>
 
         {/* รายการแจ้งซ่อม */}
-        <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: 24, borderRadius: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ marginTop: 0, marginBottom: 18, fontSize: 20, color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
-            📋 รายการแจ้งซ่อม
-          </h3>
+        <section className="card">
+          <h3 className="font-display text-lg font-bold mb-5 flex items-center gap-2"><ClipboardList size={18} className="text-gold" /> รายการแจ้งซ่อม</h3>
           {requests.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
-              <p style={{ color: '#475569', margin: 0, fontSize: 15, fontWeight: '500' }}>ยังไม่มีประวัติการแจ้งซ่อม</p>
+            <div className="p-8 text-center rounded-2xl border border-dashed border-charcoal-line bg-charcoal">
+              <p className="text-sm text-bone/60">ยังไม่มีประวัติการแจ้งซ่อม</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 420, overflowY: 'auto' }}>
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
               {requests.map((item) => (
-                <div key={item.id} style={{ border: '1px solid #e2e8f0', background: '#f8fafc', padding: 16, borderRadius: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <h4 style={{ margin: 0, fontSize: 16, color: '#0f172a', fontWeight: 'bold' }}>ห้อง {item.roomId} - {item.title}</h4>
+                <article key={item.id} className="rounded-2xl border border-charcoal-line bg-charcoal p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h4 className="text-sm font-bold">ห้อง {item.roomId} - {item.title}</h4>
                     {getStatusBadge(item.status)}
                   </div>
-                  <p style={{ margin: '6px 0 12px 0', color: '#334155', fontSize: 14, lineHeight: 1.5 }}>{item.description}</p>
-                  <div style={{ display: 'flex', gap: 8, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-                    <button
-                      onClick={() => handleUpdateStatus(item.id, 'IN_PROGRESS')}
-                      style={{ fontSize: 12, padding: '5px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: '500' }}
-                    >
-                      กำลังซ่อม
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(item.id, 'COMPLETED')}
-                      style={{ fontSize: 12, padding: '5px 10px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: '500' }}
-                    >
-                      เสร็จสิ้น
-                    </button>
-                  </div>
-                </div>
+                  <p className="text-sm text-bone/70 leading-relaxed">{item.description}</p>
+                  <p className="text-[11px] text-bone/50 mt-3">อัปเดตสถานะโดยผู้จัดการหอพัก</p>
+                </article>
               ))}
             </div>
           )}
-        </div>
-
+        </section>
       </div>
     </div>
   );
