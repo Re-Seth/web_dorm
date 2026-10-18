@@ -1,6 +1,6 @@
 #  หอพักเทาทอง — ระบบลงทะเบียนหอพักนิสิต (Web Dorm)
 
-ระบบลงทะเบียนหอพักนิสิตแบบครบวงจร ตั้งแต่สมัครสมาชิก/เข้าสู่ระบบ (OTP) กรอกข้อมูลนิสิต-ผู้ปกครอง เลือกห้องพัก ชำระเงิน ออกใบเสร็จ ไปจนถึงระบบแจ้งซ่อมและมอนิเตอร์การใช้ไฟฟ้าแบบเรียลไทม์
+ระบบลงทะเบียนหอพักนิสิตแบบครบวงจร ตั้งแต่สมัครผู้เช่า กรอกข้อมูลผู้เช่า/ผู้ติดต่อฉุกเฉิน เลือกห้องพัก ชำระเงิน ออกใบเสร็จ ไปจนถึงระบบแจ้งซ่อม มอนิเตอร์การใช้ไฟฟ้าแบบเรียลไทม์ และระบบหลังบ้านสำหรับผู้จัดการหอพัก
 
 โปรเจกต์นี้เป็น **Monorepo** ประกอบด้วย 2 ส่วนหลัก:
 
@@ -13,31 +13,41 @@
 
 ##  ฟีเจอร์หลัก
 
-- **Authentication** — สมัครสมาชิก / เข้าสู่ระบบ / ยืนยันตัวตนด้วย OTP / เปลี่ยนรหัสผ่าน / จัดการผู้ใช้ (JWT)
-- **ลงทะเบียนหอพัก** — กรอกข้อมูลนิสิตและผู้ปกครองแบบเป็นขั้นตอน (Wizard)
-- **เลือกห้องพัก** — ผังห้องแสดงสถานะว่าง/ไม่ว่างแบบสี (เขียว/เหลือง/แดง)
-- **ชำระเงิน & ใบเสร็จ** — ชำระผ่าน QR/โอนธนาคาร พร้อมออกใบเสร็จจำลอง
-- **แจ้งซ่อม (Maintenance)** — แจ้งปัญหาห้องพัก ติดตามสถานะ PENDING → IN_PROGRESS → COMPLETED
-- **มอนิเตอร์ไฟฟ้าแบบเรียลไทม์** — ส่งค่าแรงดัน/กระแส/กำลังไฟฟ้าและหน่วยสะสมผ่าน Socket.io
-- **แบบประเมิน/รีวิว** — ให้นิสิตรีวิวหลังใช้งานระบบ
-- **👑 ระบบผู้จัดการหอพัก (Dorm Manager / Admin)** — แดชบอร์ดสรุปสถิติภาพรวม, จัดการผู้เข้าพักและยกเลิกการจอง, อนุมัติสถานะการชำระเงิน, จัดการงานแจ้งซ่อมบำรุง และจัดการสิทธิ์ผู้ใช้งาน (USER ↔ ADMIN)
+- **Authentication** — สมัครสมาชิก / เข้าสู่ระบบ / เปลี่ยนรหัสผ่าน (JWT)
+- **ลงทะเบียนผู้เช่า** — กรอกข้อมูลส่วนตัว การศึกษา ผู้ติดต่อฉุกเฉิน 2 คน และยานพาหนะ คัดกรองอาคารตามเพศ (ชาย → เทาทอง 1 / หญิง → เทาทอง 2–4) และเปิดรับเฉพาะช่วงรอบลงทะเบียน
+- **บัตรผู้เช่า** — แสดงข้อมูลผู้เช่าพร้อมรูปโปรไฟล์
+- **เลือกห้องพัก** — ผังห้องแสดงจำนวนผู้พักจริงของแต่ละห้อง (ห้องละ 4 เตียง)
+- **ชำระเงิน & ใบเสร็จ** — ชำระผ่าน QR/โอนธนาคาร (จำลอง) พร้อมออกใบเสร็จ
+- **แจ้งซ่อม (Maintenance)** — แจ้งปัญหาห้องพัก ติดตามสถานะ PENDING → IN_PROGRESS → COMPLETED ผู้จัดการได้รับแจ้งเตือนแบบเรียลไทม์
+- **มอนิเตอร์ไฟฟ้าแบบเรียลไทม์** — ส่งค่าแรงดัน/กระแส/กำลังไฟฟ้าและหน่วยสะสมผ่าน Socket.io (ข้อมูลจำลอง)
+- **แบบประเมิน/รีวิว** — ให้ผู้เช่ารีวิวหลังใช้งานระบบ
+- **👑 ระบบผู้จัดการหอพัก (Admin)** — แดชบอร์ดสรุปสถิติ, จัดการผู้เข้าพักและยกเลิกการจอง, อนุมัติสถานะการชำระเงิน, จัดการงานแจ้งซ่อม และจัดการสิทธิ์ผู้ใช้ (USER ↔ ADMIN)
 
 ---
 
-### 🔑 บัญชีทดสอบระบบ
+### 🔑 การเข้าใช้งานเพื่อทดสอบ
 
-| ประเภทผู้ใช้งาน | Username | Password | สิทธิ์ (Role) | การเข้าถึง |
-|---|---|---|---|---|
-| **👑 ผู้จัดการหอพัก** | `admin` | `admin123` | `ADMIN` | เข้าถึงระบบจัดการหอพักทั้งหมด (`/app/admin`) |
-| **👤 นิสิต (Demo)** | `64010001` | `123456` | `USER` | ระบบลงทะเบียน จองห้อง ชำระเงิน และแจ้งซ่อม |
+**ปุ่มบัญชีทดลอง (แนะนำสำหรับเว็บทดสอบ)** — ตั้ง `DEMO_LOGIN=true` ใน `.env` ของ backend แล้วหน้า login จะมีปุ่ม **ผู้เช่า** และ **ผู้จัดการหอ (Admin)** กดแล้วเข้าระบบได้ทันที (ระบบสร้างบัญชี `demo-user@demo.local` / `demo-admin@demo.local` ให้เอง โดยใช้รหัสผ่านสุ่ม)
 
+> ⚠️ **ห้ามเปิด `DEMO_LOGIN` บนระบบจริง** — ใครก็กดเข้าเป็น Admin ได้
+
+**สร้างบัญชี Admin จริง** — ตั้ง `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` ใน `.env` แล้วรัน:
+
+```bash
+cd dorm-registration-backend
+npm run seed
+```
+
+**ผู้เช่า** — สมัครใหม่ได้ที่หน้า `/apply` (รหัสผ่านอย่างน้อย 8 ตัวอักษร ต้องอยู่ในช่วงเปิดรับลงทะเบียน)
+
+---
 
 ##  เทคโนโลยีที่ใช้
 
 **Frontend**
 - React 18 + Vite
 - React Router v6
-- Tailwind CSS (ธีมกำหนดเอง "เทาทอง" — charcoal + gold)
+- Tailwind CSS
 - Axios, Chart.js / react-chartjs-2
 - Socket.io Client
 
@@ -46,6 +56,7 @@
 - Prisma ORM (SQLite)
 - JWT (jsonwebtoken) สำหรับ Authentication
 - bcryptjs สำหรับเข้ารหัสรหัสผ่าน
+- express-rate-limit สำหรับจำกัดการเดารหัสผ่าน
 
 ---
 
@@ -53,45 +64,59 @@
 
 ```
 web_dorm/
-├── dorm-registration/            # Frontend (React + Vite)
+├── dorm-registration/              # Frontend (React + Vite)
 │   ├── src/
-│   │   ├── components/           # UI Components (OtpInput, StepIndicator, Layout ฯลฯ)
-│   │   ├── context/               # AuthContext, RegistrationContext
-│   │   ├── data/                  # ข้อมูล mock หอพัก/ชั้น/ห้อง
-│   │   └── pages/                 # AuthPage, Dashboard, RegisterDorm, RoomSelection, Payment ฯลฯ
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── vercel.json
+│   │   ├── components/             # Layout, landing (LoginCard), tenant (ฟอร์ม/บัตรผู้เช่า) ฯลฯ
+│   │   ├── context/                # AuthContext, RegistrationContext
+│   │   ├── hooks/                  # useMaintenanceAlerts, useRegistrationPeriod
+│   │   ├── pages/                  # Landing, ApplyPage, Dashboard, RoomSelection, Payment, Receipt, Admin ฯลฯ
+│   │   ├── services/               # api.js, socket.js
+│   │   └── studentApi.js           # axios instance + จัดการ token
+│   ├── Dockerfile                  # build ด้วย Vite แล้วเสิร์ฟด้วย Nginx
+│   └── nginx.conf
 │
-└── dorm-registration-backend/    # Backend (Express + Prisma)
-    ├── index.js                   # Entry point: routes + Socket.io
-    └── prisma/
-        └── schema.prisma          # Models: User, PowerUsage, MaintenanceRequest
+├── dorm-registration-backend/      # Backend (Express + Prisma)
+│   ├── index.js                    # Entry point: auth, users, แจ้งซ่อม, Socket.io
+│   ├── adminRoutes.js              # /api/admin/* (ห้อง, การจอง, ผู้ใช้)
+│   ├── adminDashboardRoutes.js     # /api/admin/* (แดชบอร์ดผู้จัดการ)
+│   ├── studentRoutes.js            # จองห้อง / ชำระเงิน / รีวิว
+│   ├── profileRoutes.js            # ข้อมูลผู้เช่า
+│   ├── registrationPeriod.js       # รอบเปิดรับลงทะเบียน
+│   ├── demoLogin.js                # ปุ่มบัญชีทดลอง (DEMO_LOGIN)
+│   ├── bookings.js / validation.js # กันจองเกินความจุ, เลขใบเสร็จ, ตรวจข้อมูลบัญชี
+│   ├── .env.example
+│   └── prisma/schema.prisma        # Models: User, TenantProfile, Room, Booking, MaintenanceRequest, Review ฯลฯ
+│
+├── docker-compose.yml
+├── start.js / start.bat            # รันทั้งระบบบนเครื่อง (ไม่ใช้ Docker)
+└── docker-start.bat / docker-stop.bat
 ```
 
-> รายละเอียดโครงสร้าง frontend แบบเจาะลึกดูเพิ่มเติมได้ที่ [`dorm-registration/README.md`](./dorm-registration/README.md)
+> รายละเอียด frontend ดูเพิ่มเติมได้ที่ [`dorm-registration/README.md`](./dorm-registration/README.md)
 
 ---
 
 ### 🚀 วิธีรันทั้งระบบแบบง่ายที่สุด (1 คำสั่ง หรือ 1 คลิก)
 
-อยู่ในโฟลเดอร์หลัก `web_dorm/` สามารถเลือกวิธีใดวิธีหนึ่งได้เลย:
+อยู่ในโฟลเดอร์หลัก `web_dorm/` เลือกวิธีใดวิธีหนึ่ง:
 
-#### รันผ่าน Docker (แนะนำ — มี Node.js 20 พร้อมใช้ ไม่ต้องลงอะไรในเครื่อง)
-- **วิธีที่ 1 (ดับเบิลคลิก):** ดับเบิลคลิกที่ไฟล์ [`docker-start.bat`](./docker-start.bat) (หรือดับเบิลคลิก [`start.bat`](./start.bat))
-- **วิธีที่ 2 (Terminal):** รันคำสั่ง:
+#### รันผ่าน Docker (ไม่ต้องลง Node.js ในเครื่อง)
+- **ดับเบิลคลิก:** [`docker-start.bat`](./docker-start.bat) — ครั้งแรกจะสร้างไฟล์ `.env` ที่โฟลเดอร์หลักพร้อม `JWT_SECRET` แบบสุ่มให้อัตโนมัติ
+- **Terminal:** ต้องมีไฟล์ `.env` ที่โฟลเดอร์หลักที่ตั้ง `JWT_SECRET` ไว้ก่อน แล้วรัน:
   ```bash
   docker compose up -d --build
   ```
 - **หยุดการทำงาน:** ดับเบิลคลิก [`docker-stop.bat`](./docker-stop.bat) หรือรัน `docker compose down`
 
-#### หรือรันผ่านเครื่องโฮสต์ (ต้องมี Node.js ติดตั้งไว้ในเครื่อง)
-- **ดับเบิลคลิก:** ไฟล์ [`start.bat`](./start.bat) (หากไม่มี Node.js จะสลับไปรัน Docker ให้อัตโนมัติ)
-- **Terminal:** รัน `npm start` หรือ `node start.js`
+#### หรือรันบนเครื่อง (ต้องมี Node.js)
+- **ดับเบิลคลิก:** [`start.bat`](./start.bat) (ถ้าไม่มี Node.js จะสลับไปใช้ Docker ให้อัตโนมัติ)
+- **Terminal:** `npm start` หรือ `node start.js`
 
-> ระบบจะเริ่มทำงานทั้ง Backend (Port 5000) และ Frontend (Port 5173) พร้อมเปิดเบราว์เซอร์ไปที่ [http://localhost:5173](http://localhost:5173) ให้อัตโนมัติ!
+> `start.js` จะสร้าง `.env` ของ backend (สุ่ม `JWT_SECRET` ให้) ติดตั้ง dependencies สร้างตารางฐานข้อมูล แล้วรัน Backend (Port 5000) และ Frontend (Port 5173) พร้อมเปิดเบราว์เซอร์ไปที่ [http://localhost:5173](http://localhost:5173)
 
 ---
+
+## ติดตั้งแบบทีละขั้น (Manual)
 
 ### 1. Clone โปรเจกต์
 
@@ -107,19 +132,29 @@ cd dorm-registration-backend
 npm install
 ```
 
-คัดลอก `.env.example` เป็น `.env` ในโฟลเดอร์ `dorm-registration-backend/` (ถ้ารันผ่าน `start.bat` ระบบจะสร้างให้อัตโนมัติ):
-
-```env
-DATABASE_URL="file:./dev.db"
-JWT_SECRET="your_jwt_secret_here"
-```
-
-รันเซิร์ฟเวอร์ (`npm run dev` จะรัน `prisma db push` ให้อัตโนมัติเพื่ออัปเดตโครงสร้างฐานข้อมูล):
+คัดลอก `.env.example` เป็น `.env` แล้วตั้งค่า **อย่างน้อย `JWT_SECRET`** (backend จะไม่ยอมเริ่มถ้าไม่ได้ตั้ง หรือสั้นกว่า 16 ตัวอักษร):
 
 ```bash
-npm run dev      # โหมดพัฒนา (nodemon)
+# สร้างค่าสุ่มสำหรับ JWT_SECRET
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```
+
+| ตัวแปร | จำเป็น | คำอธิบาย |
+|---|---|---|
+| `DATABASE_URL` | ✅ | ที่อยู่ไฟล์ SQLite เช่น `file:./dev.db` |
+| `JWT_SECRET` | ✅ | คีย์ลับสำหรับเซ็น token (≥ 16 ตัวอักษร ห้าม commit) |
+| `CORS_ORIGIN` | | origin ของ frontend ที่อนุญาต คั่นด้วย `,` (ค่าเริ่มต้น `http://localhost:5173,http://localhost:8080`) |
+| `DEMO_LOGIN` | | `true` = แสดงปุ่มบัญชีทดลองบนหน้า login (เฉพาะเว็บทดสอบ) |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | | ใช้กับ `npm run seed` เพื่อสร้างบัญชี Admin |
+| `REG_TERM` / `REG_OPEN_AT` / `REG_CLOSE_AT` | | ภาคเรียนและช่วงเปิดรับลงทะเบียน (ISO 8601 พร้อมเขตเวลา) |
+
+สร้างตารางในฐานข้อมูล แล้วรันเซิร์ฟเวอร์:
+
+```bash
+npx prisma db push   # สร้าง/อัปเดตตารางตาม schema (ทำครั้งแรก และทุกครั้งที่ schema เปลี่ยน)
+npm run dev          # โหมดพัฒนา (node --watch)
 # หรือ
-npm start        # โหมด production
+npm start            # โหมด production
 ```
 
 ### 3. ติดตั้งและรัน Frontend
@@ -132,58 +167,81 @@ npm install
 npm run dev
 ```
 
-จากนั้นเปิดเบราว์เซอร์ที่ URL ที่ Vite แสดง (ค่าเริ่มต้นคือ `http://localhost:5173`)
+เปิดเบราว์เซอร์ที่ `http://localhost:5173` (ถ้า backend ไม่ได้อยู่ที่ `http://localhost:5000` ให้ตั้ง `VITE_API_URL`)
 
 ---
 
 ##  API Endpoints (Backend)
 
+🔒 = ต้องแนบ token (`Authorization: Bearer <token>`) · 👑 = เฉพาะ Admin
+
+**บัญชีผู้ใช้**
+
 | Method | Endpoint | คำอธิบาย |
 |---|---|---|
-| POST | `/register` | สมัครสมาชิก |
-| POST | `/login` | เข้าสู่ระบบ (คืนค่า JWT) |
-| POST | `/logout` | ออกจากระบบ *(ต้องมี token)* |
-| POST | `/change-password` | เปลี่ยนรหัสผ่าน *(ต้องมี token)* |
-| GET | `/me` | ดึงข้อมูลผู้ใช้ปัจจุบัน *(ต้องมี token)* |
-| GET | `/check-username/:name` | ตรวจสอบว่า username ซ้ำหรือไม่ |
-| GET | `/users` | ดึงรายชื่อผู้ใช้ทั้งหมด *(ต้องมี token)* |
-| GET | `/users/:id` | ดึงข้อมูลผู้ใช้รายบุคคล *(ต้องมี token)* |
-| PUT | `/users/:id` | แก้ไขข้อมูลผู้ใช้ *(ต้องมี token)* |
-| DELETE | `/users/:id` | ลบผู้ใช้ *(ต้องมี token)* |
-| GET | `/api/student-profile` | ดึงข้อมูลนิสิตและผู้ปกครอง *(ต้องมี token)* |
-| POST | `/api/student-profile` | บันทึก/อัปเดตข้อมูลนิสิตและผู้ปกครอง *(ต้องมี token)* |
-| GET | `/api/dorms` | ดึงรายชื่อหอพักทั้งหมด |
-| GET | `/api/dorms/:id/rooms` | ดึงรายชื่อห้องพักและจำนวนคนจองจริงตามชั้น |
-| POST | `/api/bookings` | จองห้องพัก *(ต้องมี token)* |
-| GET | `/api/bookings/my` | ดึงข้อมูลการจองของผู้ใช้ปัจจุบัน *(ต้องมี token)* |
-| POST | `/api/payments` | ชำระเงินและออกใบเสร็จ *(ต้องมี token)* |
-| GET | `/api/payments/receipt` | ดึงข้อมูลใบเสร็จรับเงิน *(ต้องมี token)* |
-| POST | `/api/reviews` | ส่งคะแนนและข้อเสนอแนะ *(ต้องมี token)* |
-| GET | `/api/reviews` | ดึงรายการรีวิวทั้งหมด |
-| GET | `/api/maintenance` | ดึงรายการแจ้งซ่อมทั้งหมด |
-| POST | `/api/maintenance` | สร้างรายการแจ้งซ่อมใหม่ |
-| PATCH | `/api/maintenance/:id/status` | อัปเดตสถานะการแจ้งซ่อม |
-| GET | `/api/power/history` | ดึงประวัติการใช้ไฟฟ้าย้อนหลังจาก SQLite |
-| **GET** | `/api/admin/overview` | **(Admin)** สรุปสถิติภาพรวมหอพักทั้งหมดและความจุเตียง |
-| **GET** | `/api/admin/residents` | **(Admin)** ดึงรายชื่อผู้เข้าพักทั้งหมด กรองตามหอพักและค้นหา |
-| **POST** | `/api/admin/bookings/cancel` | **(Admin)** ยกเลิกการจองห้องพักของผู้ใช้เพื่อคืนเตียงว่าง |
-| **GET** | `/api/admin/payments` | **(Admin)** ดึงรายการชำระเงินทั้งหมด |
-| **PATCH** | `/api/admin/payments/:id/status`| **(Admin)** อัปเดตสถานะการชำระเงิน (PAID/PENDING) |
-| **GET** | `/api/admin/users` | **(Admin)** ดึงรายชื่อผู้ใช้ทั้งหมด |
-| **PATCH** | `/api/admin/users/:id/role` | **(Admin)** ปรับเปลี่ยนสิทธิ์ผู้ใช้ (USER ↔ ADMIN) |
+| POST | `/register` | สมัครสมาชิก (รหัสผ่าน ≥ 8 ตัวอักษร) |
+| POST | `/login` | เข้าสู่ระบบด้วย username หรืออีเมล (คืนค่า JWT อายุ 1 วัน) |
+| POST | `/logout` | ออกจากระบบ 🔒 |
+| POST | `/change-password` | เปลี่ยนรหัสผ่าน — token เก่าใช้ไม่ได้ทันที และคืน token ใหม่ 🔒 |
+| GET | `/me` | ข้อมูลผู้ใช้ปัจจุบัน 🔒 |
+| GET | `/check-username/:name` | ตรวจสอบว่า username ว่างหรือไม่ |
+| GET | `/users` | รายชื่อผู้ใช้ทั้งหมด (แบ่งหน้า) 🔒👑 |
+| GET / PUT / DELETE | `/users/:id` | ดู/แก้ไข/ลบผู้ใช้ — ของตัวเอง หรือ Admin (เปลี่ยน role ได้เฉพาะ Admin) 🔒 |
+| GET / POST | `/api/demo-login` | สถานะ/เข้าสู่ระบบด้วยบัญชีทดลอง (ใช้ได้เมื่อ `DEMO_LOGIN=true`) |
 
-นอกจากนี้ยังมีการส่งข้อมูลการใช้ไฟฟ้าแบบเรียลไทม์ผ่าน **Socket.io** พร้อมบันทึกประวัติลงฐานข้อมูล SQLite อัตโนมัติ
+**ผู้เช่า**
+
+| Method | Endpoint | คำอธิบาย |
+|---|---|---|
+| GET | `/api/registration-period` | รอบเปิดรับลงทะเบียนปัจจุบัน |
+| GET / PUT | `/api/profile` | ดู/บันทึกข้อมูลผู้เช่า 🔒 |
+| PATCH | `/api/profile/keep` | เก็บข้อมูลไว้ใช้ภาคเรียนถัดไป 🔒 |
+| PATCH | `/api/profile/photo` | อัปโหลด/ลบรูปบนบัตรผู้เช่า 🔒 |
+| GET | `/api/rooms/availability?dormId=&floor=` | จำนวนผู้พักของแต่ละห้องในชั้น 🔒 |
+| POST | `/api/bookings` | จอง/เปลี่ยนห้องพัก 🔒 |
+| GET | `/api/bookings/me` | การจองของผู้ใช้ปัจจุบัน 🔒 |
+| POST | `/api/bookings/pay` | ชำระเงิน (จำลอง) และออกใบเสร็จ 🔒 |
+| POST | `/api/reviews` | ส่งคะแนนและข้อเสนอแนะ 🔒 |
+| GET | `/api/maintenance` | รายการแจ้งซ่อม — ผู้เช่าเห็นเฉพาะของตัวเอง Admin เห็นทั้งหมด 🔒 |
+| POST | `/api/maintenance` | แจ้งซ่อมใหม่ 🔒 |
+| PATCH | `/api/maintenance/:id/status` | อัปเดตสถานะการแจ้งซ่อม 🔒👑 |
+
+**ผู้จัดการหอพัก (ทุก endpoint ต้องเป็น Admin 🔒👑)**
+
+| Method | Endpoint | คำอธิบาย |
+|---|---|---|
+| GET | `/api/admin/overview` | สรุปสถิติภาพรวมหอพักและความจุเตียง |
+| GET | `/api/admin/residents` | รายชื่อผู้เข้าพัก กรองตามหอพัก/ชั้น และค้นหา |
+| POST | `/api/admin/bookings/cancel` | ยกเลิกการจองเพื่อคืนเตียงว่าง |
+| GET | `/api/admin/payments` | รายการชำระเงินทั้งหมด |
+| PATCH | `/api/admin/payments/:id/status` | อัปเดตสถานะการชำระเงิน (PAID/PENDING) |
+| GET | `/api/admin/users` | รายชื่อผู้ใช้พร้อมโปรไฟล์และการจอง |
+| PATCH | `/api/admin/users/:id/role` | เปลี่ยนสิทธิ์ผู้ใช้ (USER ↔ ADMIN) |
+| GET | `/api/admin/reviews` | รีวิวทั้งหมด |
+| | `/api/admin/rooms`, `/api/admin/bookings`, `/api/admin/maintenance`, `/api/admin/users/:id` | CRUD ห้อง การจอง งานแจ้งซ่อม และผู้ใช้ |
+
+**Real-time (Socket.io)**
+- `power_update` — ข้อมูลการใช้ไฟฟ้าทุก 3 วินาที (ส่งให้ทุกคน)
+- `maintenance_created` / `maintenance_updated` — ส่งเฉพาะ Admin และผู้แจ้งรายการนั้น (client ต้องแนบ token ใน `auth.token` ตอนเชื่อมต่อ)
 
 ---
 
-## 🐳 Docker Deployment (ทั้งระบบพร้อม Node.js)
+## 🔒 ความปลอดภัย
 
-ทั้งระบบ (Backend + Frontend) รองรับการรันผ่าน Docker โดยติดตั้ง **Node.js 20 Alpine** ภายในคอนเทนเนอร์ทั้งหมด
+- **ห้าม commit** ไฟล์ `.env` และไฟล์ฐานข้อมูล `*.db` (มีข้อมูลส่วนบุคคล — อยู่ใน `.gitignore` แล้ว)
+- ทุก request โหลด role ล่าสุดจากฐานข้อมูล ลดสิทธิ์หรือลบบัญชีแล้วมีผลทันที
+- จำกัดการเข้าสู่ระบบผิด 10 ครั้ง / 15 นาที ต่อ IP + บัญชี
+- การจองห้องทำใน transaction กันจองเกินความจุเมื่อมีหลายคนกดพร้อมกัน
+- การชำระเงินยังเป็นแบบจำลอง — ก่อนใช้งานจริงควรเปลี่ยนเป็นแนบสลิปให้ Admin ยืนยัน
+
+---
+
+## 🐳 Docker Deployment
 
 ### คำสั่งควบคุมระบบผ่าน Docker
 
 ```bash
-# สั่ง Build และรันทั้งระบบในเบื้องหลัง
+# สั่ง Build และรันทั้งระบบในเบื้องหลัง (ต้องมี .env ที่โฟลเดอร์หลักที่ตั้ง JWT_SECRET)
 docker compose up -d --build
 
 # ดูสถานะคอนเทนเนอร์
@@ -197,14 +255,16 @@ docker compose logs -f frontend
 docker compose down
 ```
 
+ตัวแปรที่ใส่ในไฟล์ `.env` ที่โฟลเดอร์หลักได้: `JWT_SECRET` (จำเป็น), `CORS_ORIGIN`, `DEMO_LOGIN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_EMAIL`
+
 ### การตั้งค่า Port และ Services
 
 | Service | Container Name | Port (โฮสต์) | รายละเอียด |
 |---|---|---|---|
-| **Backend** | `dorm_backend` | `http://localhost:5000` | Node.js 20 + Express + Prisma (SQLite persist) + Socket.io |
-| **Frontend** | `dorm_frontend` | `http://localhost:8080` | Build ด้วย Vite แล้วเสิร์ฟด้วย Nginx (React 18 + Tailwind) |
+| **Backend** | `dorm_backend` | `http://localhost:5000` | Node.js 20 + Express + Prisma (SQLite) + Socket.io — รัน `prisma db push` ทุกครั้งที่เริ่ม |
+| **Frontend** | `dorm_frontend` | `http://localhost:8080` | Build ด้วย Vite แล้วเสิร์ฟด้วย Nginx |
 
-> 💾 ฐานข้อมูล SQLite ของ Docker เก็บใน volume `dbdata` (`/data/dev.db` ในคอนเทนเนอร์) แยกจาก `dorm-registration-backend/prisma/dev.db` ที่ใช้ตอนรันแบบไม่ใช้ Docker — ข้อมูลไม่หายเมื่อหยุดคอนเทนเนอร์ (ยกเว้นสั่ง `docker compose down -v`)
+> 💾 ฐานข้อมูล SQLite ของ Docker เก็บใน volume `dbdata` (`/data/dev.db` ในคอนเทนเนอร์) แยกจากฐานข้อมูลที่ใช้ตอนรันแบบไม่ใช้ Docker — ข้อมูลไม่หายเมื่อหยุดคอนเทนเนอร์ (ยกเว้นสั่ง `docker compose down -v`)
 
 ---
 
