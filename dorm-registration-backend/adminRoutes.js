@@ -3,6 +3,8 @@
 // ทุก endpoint ภายใต้ /api/admin ต้องใช้ JWT ของ user ที่ role = ADMIN
 // ==========================================
 const bcrypt = require('bcryptjs');
+const { passwordError, emailError, usernameError, nameError } = require('./validation');
+const { RoomFullError, writeWithinCapacity, receiptNoFor } = require('./bookings');
 
 // ต้องตรงกับ src/data/dorms.js ฝั่ง frontend
 const DORMS = [
@@ -16,16 +18,8 @@ const ROOM_STATUSES = ['AVAILABLE', 'MAINTENANCE', 'CLOSED'];
 const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED'];
 const MAINT_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
-module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }) {
-  const requireAdmin = (req, res, next) => {
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Admin only' });
-    }
-    next();
-  };
+module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
   const guard = [authenticateToken, requireAdmin];
-  const fail = (res, err, msg = 'Internal server error') =>
-    res.status(500).json({ message: msg, error: err.message });
 
   // นับเฉพาะการจองที่ยังไม่ถูกยกเลิก
   const activeCount = (room) =>
@@ -174,11 +168,14 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }
       if (!room) return res.status(404).json({ message: 'Room not found' });
       if (room.status !== 'AVAILABLE') return res.status(400).json({ message: 'ห้องนี้ไม่เปิดให้จอง' });
       if (room.bookings.length >= room.capacity) return res.status(400).json({ message: 'ห้องเต็มแล้ว' });
-      const booking = await prisma.booking.create({
+      const booking = await writeWithinCapacity(prisma, room.id, (tx) => tx.booking.create({
         data: { roomId: room.id, studentName, studentCode, phone, parentName, parentPhone },
-      });
+      }));
       res.status(201).json(booking);
-    } catch (err) { fail(res, err); }
+    } catch (err) {
+      if (err instanceof RoomFullError) return res.status(400).json({ message: 'ห้องเต็มแล้ว' });
+      fail(res, err);
+    }
   });
 
   app.patch('/api/admin/bookings/:id', ...guard, async (req, res) => {
@@ -195,7 +192,7 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }
         if (paymentStatus === 'PAID') {
           data.paidAt = new Date();
           data.paymentMethod = paymentMethod || 'CASH';
-          data.receiptNo = 'RCPT-' + Date.now().toString().slice(-8);
+          data.receiptNo = receiptNoFor(Number(req.params.id), data.paidAt);
         } else {
           data.paidAt = null; data.paymentMethod = null; data.receiptNo = null;
         }
@@ -261,6 +258,8 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }
       if (!username || !email || !password) {
         return res.status(400).json({ message: 'username, email, password จำเป็นต้องกรอก' });
       }
+      const invalid = usernameError(username) || emailError(email) || passwordError(password) || nameError(name);
+      if (invalid) return res.status(400).json({ message: invalid });
       const user = await prisma.user.create({
         data: {
           username, email, name,
@@ -283,17 +282,23 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken }
       if (id === req.user.id && role && role !== 'ADMIN') {
         return res.status(400).json({ message: 'ไม่สามารถลดสิทธิ์ตัวเองได้' });
       }
+      const invalid = (email !== undefined && emailError(email)) || nameError(name) || (password && passwordError(password));
+      if (invalid) return res.status(400).json({ message: invalid });
       const data = {};
       if (name !== undefined) data.name = name;
       if (email !== undefined) data.email = email;
       if (role !== undefined) data.role = role === 'ADMIN' ? 'ADMIN' : 'USER';
-      if (password) data.password = await bcrypt.hash(password, 10);
+      if (password) {
+        data.password = await bcrypt.hash(password, 10);
+        data.passwordChangedAt = new Date(); // บังคับออกจากระบบทุกเครื่องของผู้ใช้นั้น
+      }
       res.json(await prisma.user.update({
         where: { id }, data,
         select: { id: true, username: true, email: true, name: true, role: true },
       }));
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'User not found' });
+      if (err.code === 'P2002') return res.status(400).json({ message: 'Email ซ้ำ' });
       fail(res, err);
     }
   });

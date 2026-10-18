@@ -14,6 +14,7 @@ model User {
   password  String
   name      String?
   role      String   @default("USER")
+  passwordChangedAt DateTime? // token ที่ออกก่อนเวลานี้ใช้ไม่ได้
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

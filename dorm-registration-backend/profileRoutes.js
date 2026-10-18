@@ -119,9 +119,7 @@ function parseProfile(body) {
   };
 }
 
-module.exports = function registerProfileRoutes({ app, prisma, authenticateToken }) {
-  const fail = (res, err) =>
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+module.exports = function registerProfileRoutes({ app, prisma, authenticateToken, serverError: fail }) {
 
   const findProfile = (userId) => prisma.tenantProfile.findUnique({ where: { userId } });
 

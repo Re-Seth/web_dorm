@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Eye, EyeOff, LoaderCircle, LogIn, UserRound } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, LoaderCircle, LogIn, ShieldCheck, UserRound } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import api, { clearToken, errMsg, setToken } from '../../studentApi'
 
@@ -16,6 +16,20 @@ export default function LoginCard({ redirectTo = '/app', className = '' }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // ปุ่มบัญชีทดลอง แสดงเฉพาะเมื่อ backend เปิด DEMO_LOGIN
+  const [demoEnabled, setDemoEnabled] = useState(false)
+  useEffect(() => {
+    api.get('/api/demo-login').then(({ data }) => setDemoEnabled(!!data.enabled)).catch(() => {})
+  }, [])
+
+  function finishLogin(data) {
+    clearToken()
+    setToken(data.token)
+    login({ identifier: data.user.username, username: data.user.username, contact: data.user.email, name: data.user.name, role: data.user.role })
+    // ผู้จัดการหอพักไปหน้าระบบจัดการหอพักโดยตรง
+    navigate(data.user.role === 'ADMIN' ? '/app/admin' : redirectTo)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -30,13 +44,22 @@ export default function LoginCard({ redirectTo = '/app', className = '' }) {
         username: username.includes('@') ? username.toLowerCase() : username,
         password: form.password,
       })
-      clearToken()
-      setToken(data.token)
-      login({ identifier: data.user.username, username: data.user.username, contact: data.user.email, name: data.user.name, role: data.user.role })
-      // ผู้จัดการหอพักไปหน้าระบบจัดการหอพักโดยตรง
-      navigate(data.user.role === 'ADMIN' ? '/app/admin' : redirectTo)
+      finishLogin(data)
     } catch (err) {
       setError(err.response?.status === 401 ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : errMsg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function demoLogin(role) {
+    setError('')
+    setBusy(true)
+    try {
+      const { data } = await api.post('/api/demo-login', { role })
+      finishLogin(data)
+    } catch (err) {
+      setError(errMsg(err))
     } finally {
       setBusy(false)
     }
@@ -115,6 +138,19 @@ export default function LoginCard({ redirectTo = '/app', className = '' }) {
         {busy ? <LoaderCircle size={15} className="animate-spin" /> : <LogIn size={15} />}
         เข้าสู่ระบบ
       </button>
+      {demoEnabled && (
+        <div className="pt-1 space-y-2">
+          <p className="text-[11px] text-center text-japandi-muted">— ทดลองใช้งาน (เว็บทดสอบ) —</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={busy} onClick={() => demoLogin('USER')} className="px-3 py-2.5 rounded-full border border-japandi-sand text-xs font-medium text-japandi-oak hover:bg-japandi-bg transition flex items-center justify-center gap-1.5 disabled:opacity-60">
+              <UserRound size={13} /> ผู้เช่า
+            </button>
+            <button type="button" disabled={busy} onClick={() => demoLogin('ADMIN')} className="px-3 py-2.5 rounded-full border border-japandi-terracotta/40 text-xs font-medium text-japandi-terracotta hover:bg-japandi-terracotta/10 transition flex items-center justify-center gap-1.5 disabled:opacity-60">
+              <ShieldCheck size={13} /> ผู้จัดการหอ (Admin)
+            </button>
+          </div>
+        </div>
+      )}
       <p className="text-xs text-center text-japandi-muted">
         ยังไม่มีบัญชี? <Link to="/apply" className="text-japandi-terracotta font-medium hover:underline">ลงทะเบียนผู้เช่าใหม่</Link>
       </p>

@@ -9,13 +9,8 @@ const ROOMS_PER_FLOOR = 10; // ตรงกับผังห้องฝั่�
 const BED_CAPACITY = 4;
 const ACTIVE = { status: { not: 'CANCELLED' } };
 
-module.exports = function registerAdminDashboardRoutes({ app, prisma, authenticateToken }) {
-  const requireAdmin = (req, res, next) =>
-    req.user?.role === 'ADMIN'
-      ? next()
-      : res.status(403).json({ message: 'Forbidden: สงวนสิทธิ์สำหรับผู้จัดการหอพัก (Admin) เท่านั้น' });
+module.exports = function registerAdminDashboardRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
   const guard = [authenticateToken, requireAdmin];
-  const fail = (res, err, msg = 'Internal server error') => res.status(500).json({ message: msg, error: err.message });
 
   const dormOf = (dormId) => DORMS.find((d) => d.id === dormId);
 

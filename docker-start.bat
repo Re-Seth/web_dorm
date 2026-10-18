@@ -5,6 +5,12 @@ echo  🚀 กำลังเริ่มต้นระบบ หอพัก�
 echo ========================================================
 echo.
 
+rem สร้าง .env พร้อม JWT_SECRET แบบสุ่มในครั้งแรก (docker-compose.yml บังคับให้ต้องมี)
+if not exist .env (
+    powershell -NoProfile -Command "$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); 'JWT_SECRET=' + [Convert]::ToBase64String($b) | Out-File -Encoding ascii .env"
+    echo สร้างไฟล์ .env พร้อม JWT_SECRET แบบสุ่มแล้ว
+)
+
 docker compose up -d --build
 if %errorlevel% neq 0 (
     echo.

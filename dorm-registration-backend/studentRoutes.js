@@ -4,11 +4,10 @@
 // ==========================================
 const DORM_IDS = ['tt1', 'tt2', 'tt3', 'tt4'];
 const { DORMS_BY_GENDER } = require('./profileRoutes');
+const { RoomFullError, writeWithinCapacity, receiptNoFor } = require('./bookings');
 const CAPACITY = 4;
 
-module.exports = function registerStudentRoutes({ app, prisma, authenticateToken }) {
-  const fail = (res, err) =>
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+module.exports = function registerStudentRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
 
   const activeBooking = (userId) =>
     prisma.booking.findFirst({
@@ -98,11 +97,14 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
         parentName: parentName || null,
         parentPhone: parentPhone || null,
       };
-      const booking = existing
-        ? await prisma.booking.update({ where: { id: existing.id }, data })
-        : await prisma.booking.create({ data });
+      const booking = await writeWithinCapacity(prisma, room.id, (tx) => existing
+        ? tx.booking.update({ where: { id: existing.id }, data })
+        : tx.booking.create({ data }));
       res.status(existing ? 200 : 201).json(booking);
-    } catch (err) { fail(res, err); }
+    } catch (err) {
+      if (err instanceof RoomFullError) return res.status(400).json({ message: 'ห้องนี้เต็มแล้ว กรุณาเลือกห้องอื่น' });
+      fail(res, err);
+    }
   });
 
   app.get('/api/bookings/me', authenticateToken, async (req, res) => {
@@ -119,14 +121,15 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
       if (!booking) return res.status(404).json({ message: 'ยังไม่มีการจองห้อง' });
       if (booking.paymentStatus === 'PAID') return res.json(booking); // ซ้ำได้ ไม่เก็บเงินสองรอบ
 
+      const paidAt = new Date();
       const updated = await prisma.booking.update({
         where: { id: booking.id },
         data: {
           paymentStatus: 'PAID',
           status: 'CONFIRMED',
           paymentMethod: req.body.method === 'bank' ? 'BANK' : 'QR',
-          paidAt: new Date(),
-          receiptNo: 'RCPT-' + Date.now().toString().slice(-8),
+          paidAt,
+          receiptNo: receiptNoFor(booking.id, paidAt),
         },
       });
       res.json(updated);
@@ -151,8 +154,7 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
   });
 
   // ---------- แอดมินดูรีวิว ----------
-  app.get('/api/admin/reviews', authenticateToken, async (req, res) => {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Admin only' });
+  app.get('/api/admin/reviews', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const reviews = await prisma.review.findMany({ orderBy: { createdAt: 'desc' } });
       const users = await prisma.user.findMany({

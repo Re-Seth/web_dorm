@@ -4,8 +4,21 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { PrismaClient } = require('@prisma/client');
+const { passwordError, emailError, usernameError, nameError } = require('./validation');
 require('dotenv').config();
+
+// ต้องตั้ง JWT_SECRET ใน .env เสมอ — ถ้าใช้ค่าที่เดาได้ คนอื่นจะปลอม token เป็น Admin ได้
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 16) {
+  console.error('❌ กรุณาตั้ง JWT_SECRET ใน .env (อย่างน้อย 16 ตัวอักษร) ก่อนเริ่มเซิร์ฟเวอร์');
+  process.exit(1);
+}
+
+// origin ของ frontend ที่อนุญาต (คั่นด้วย ,) — ค่าเริ่มต้น: Vite dev และ Docker
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:8080')
+  .split(',').map((s) => s.trim()).filter(Boolean);
 
 const app = express();
 const server = http.createServer(app); // ใช้ร่วมกับ Socket.io
@@ -14,21 +27,67 @@ const prisma = new PrismaClient();
 // ตั้งค่า Socket.io สำหรับ Real-time
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: CORS_ORIGINS,
     methods: ['GET', 'POST', 'PATCH', 'DELETE']
   }
 });
 
-app.use(cors());
+app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: '300kb' })); // รองรับรูปโปรไฟล์บนบัตรผู้เช่า
 
-// ค่าเริ่มต้นสำหรับ JWT Secret กรณีไม่ได้ตั้งใน .env
-const JWT_SECRET = process.env.JWT_SECRET || 'dorm_secret_key_1234';
+// :id ทุก route ต้องเป็นตัวเลข (กัน NaN ไปถึง Prisma แล้วกลายเป็น 500)
+app.param('id', (req, res, next, id) => {
+  if (!/^\d{1,9}$/.test(id)) return res.status(400).json({ message: 'id ไม่ถูกต้อง' });
+  next();
+});
+
+// error ภายใน: log ไว้ฝั่งเซิร์ฟเวอร์ ไม่ส่งรายละเอียดกลับให้ผู้ใช้
+const serverError = (res, err, message = 'Internal server error') => {
+  console.error(err);
+  res.status(500).json({ message });
+};
+
+const limiter = (windowMinutes, limit, message, options = {}) => rateLimit({
+  windowMs: windowMinutes * 60 * 1000,
+  limit,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message },
+  ...options,
+});
+// นับเฉพาะครั้งที่ล้มเหลว แยกตาม IP + บัญชี — นักศึกษาหลายคนในหอใช้ IP เดียวกัน (NAT) จึงไม่ควรบล็อกกันเอง
+const loginLimiter = limiter(15, 10, 'พยายามเข้าสู่ระบบบ่อยเกินไป กรุณาลองใหม่ใน 15 นาที', {
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `${req.ip}|${String(req.body?.username ?? req.user?.id ?? '').toLowerCase()}`,
+});
+const registerLimiter = limiter(15, 30, 'สมัครสมาชิกบ่อยเกินไป กรุณาลองใหม่ภายหลัง');
+const lookupLimiter = limiter(1, 30, 'เรียกใช้งานบ่อยเกินไป กรุณาลองใหม่ภายหลัง');
+
+const signToken = (user) =>
+  jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1d' });
+
+// ตรวจ token แล้วโหลดผู้ใช้จากฐานข้อมูล — ใช้ role ล่าสุดเสมอ (ถูกลดสิทธิ์/ลบบัญชีแล้วมีผลทันที)
+// และ token ที่ออกก่อนเปลี่ยนรหัสผ่านจะใช้ไม่ได้อีก
+async function userFromToken(token) {
+  let payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { id: true, username: true, role: true, passwordChangedAt: true },
+  });
+  if (!user) return null;
+  if (user.passwordChangedAt && payload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) return null;
+  return { id: user.id, username: user.username, role: user.role };
+}
 
 // ==========================================
 // Middleware: ตรวจสอบ JWT Token
 // ==========================================
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -36,27 +95,35 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access Token required' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid or expired token' });
-    }
+  try {
+    const user = await userFromToken(token);
+    if (!user) return res.status(403).json({ message: 'Invalid or expired token' });
     req.user = user;
     next();
-  });
+  } catch (err) {
+    serverError(res, err);
+  }
 };
+
+const requireAdmin = (req, res, next) =>
+  req.user?.role === 'ADMIN'
+    ? next()
+    : res.status(403).json({ message: 'Forbidden: สงวนสิทธิ์สำหรับผู้จัดการหอพัก (Admin) เท่านั้น' });
 
 // ==========================================
 // 1. Authentication Endpoints
 // ==========================================
 
 // POST /register - สมัครสมาชิก
-app.post('/register', async (req, res) => {
+app.post('/register', registerLimiter, async (req, res) => {
   try {
     const { username, email, password, name } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'Username, email, and password are required' });
     }
+    const invalid = usernameError(username) || emailError(email) || passwordError(password) || nameError(name);
+    if (invalid) return res.status(400).json({ message: invalid });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -70,14 +137,17 @@ app.post('/register', async (req, res) => {
     if (err.code === 'P2002') {
       return res.status(400).json({ message: 'Username or Email already exists' });
     }
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // POST /login - เข้าสู่ระบบ
-app.post('/login', async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ message: 'Username and password are required' });
+    }
 
     // เข้าสู่ระบบได้ทั้ง username หรืออีเมล
     const user = await prisma.user.findFirst({ where: { OR: [{ username }, { email: username }] } });
@@ -85,29 +155,23 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
     res.json({
       message: 'Login successful',
-      token,
+      token: signToken(user),
       user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role }
     });
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// POST /logout - ออกจากระบบ
+// POST /logout - ออกจากระบบ (token เป็นแบบ stateless ฝั่ง client ลบ token ทิ้งเอง)
 app.post('/logout', authenticateToken, (req, res) => {
   res.json({ message: 'Logout successful' });
 });
 
-// POST /change-password - เปลี่ยนรหัสผ่าน
-app.post('/change-password', authenticateToken, async (req, res) => {
+// POST /change-password - เปลี่ยนรหัสผ่าน (token เดิมทั้งหมดใช้ไม่ได้ ส่ง token ใหม่กลับไป)
+app.post('/change-password', authenticateToken, loginLimiter, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const userId = req.user.id;
@@ -115,6 +179,8 @@ app.post('/change-password', authenticateToken, async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Current and new password are required' });
     }
+    const invalid = passwordError(newPassword);
+    if (invalid) return res.status(400).json({ message: invalid });
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const isMatch = await bcrypt.compare(currentPassword, user.password);
@@ -125,14 +191,14 @@ app.post('/change-password', authenticateToken, async (req, res) => {
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-    await prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedNewPassword }
+      data: { password: hashedNewPassword, passwordChangedAt: new Date() }
     });
 
-    res.json({ message: 'Password updated successfully' });
+    res.json({ message: 'Password updated successfully', token: signToken(updated) });
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -152,12 +218,12 @@ app.get('/me', authenticateToken, async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
 // GET /check-username/:name - ตรวจสอบ username ว่างไหม
-app.get('/check-username/:name', async (req, res) => {
+app.get('/check-username/:name', lookupLimiter, async (req, res) => {
   try {
     const { name } = req.params;
     const existingUser = await prisma.user.findUnique({ where: { username: name } });
@@ -167,15 +233,15 @@ app.get('/check-username/:name', async (req, res) => {
       available: !existingUser
     });
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// GET /users - ดึงข้อมูล user ทั้งหมด
-app.get('/users', authenticateToken, async (req, res) => {
+// GET /users - ดึงข้อมูล user ทั้งหมด (เฉพาะ Admin)
+app.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const [users, total] = await Promise.all([
@@ -198,14 +264,17 @@ app.get('/users', authenticateToken, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// GET /users/:id - ดึงข้อมูล user ตาม ID
+// GET /users/:id - ดึงข้อมูล user ตาม ID (ตัวเอง หรือ Admin)
 app.get('/users/:id', authenticateToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (req.user.id !== id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -216,19 +285,27 @@ app.get('/users/:id', authenticateToken, async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
-// PUT /users/:id - แก้ไขข้อมูล user
+// PUT /users/:id - แก้ไขข้อมูล user (เปลี่ยน role ได้เฉพาะ Admin)
 app.put('/users/:id', authenticateToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { name, email, role } = req.body;
+    const isAdmin = req.user.role === 'ADMIN';
 
-    if (req.user.id !== id && req.user.role !== 'ADMIN') {
+    if (req.user.id !== id && !isAdmin) {
       return res.status(403).json({ message: 'Forbidden: You can only update your own profile' });
     }
+    if (role !== undefined) {
+      if (!isAdmin) return res.status(403).json({ message: 'Forbidden: เปลี่ยนสิทธิ์ผู้ใช้ได้เฉพาะ Admin' });
+      if (!['USER', 'ADMIN'].includes(role)) return res.status(400).json({ message: 'Role must be USER or ADMIN' });
+      if (id === req.user.id && role !== 'ADMIN') return res.status(400).json({ message: 'ไม่สามารถลดสิทธิ์ตัวเองได้' });
+    }
+    const invalid = (email !== undefined && emailError(email)) || nameError(name);
+    if (invalid) return res.status(400).json({ message: invalid });
 
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -241,7 +318,10 @@ app.put('/users/:id', authenticateToken, async (req, res) => {
     if (err.code === 'P2025') {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    if (err.code === 'P2002') {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    serverError(res, err);
   }
 });
 
@@ -261,7 +341,7 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
     if (err.code === 'P2025') {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+    serverError(res, err);
   }
 });
 
@@ -270,16 +350,6 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
 // ==========================================
 
 const MAINTENANCE_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
-
-// ไม่บังคับ Token: ถ้าแนบมาก็รู้ว่าใครเป็นผู้แจ้ง
-const optionalToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
-  if (!token) return next();
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (!err) req.user = user;
-    next();
-  });
-};
 
 // แนบชื่อผู้แจ้ง (user) ให้รายการแจ้งซ่อม — หน้าผู้จัดการหอพักใช้แสดง "ผู้แจ้ง"
 async function withReporters(requests) {
@@ -290,49 +360,55 @@ async function withReporters(requests) {
   return requests.map((r) => ({ ...r, user: users.find((u) => u.id === r.userId) || null }));
 }
 
-// GET /api/maintenance - ดึงรายการแจ้งซ่อมทั้งหมด
-app.get('/api/maintenance', async (req, res) => {
+// ส่งเหตุการณ์แจ้งซ่อมให้เฉพาะผู้จัดการหอพัก และผู้แจ้งรายการนั้น
+const emitMaintenance = (event, request) =>
+  io.to('admins').to(`user:${request.userId}`).emit(event, request);
+
+// GET /api/maintenance - Admin เห็นทั้งหมด / ผู้ใช้ทั่วไปเห็นเฉพาะที่ตัวเองแจ้ง
+app.get('/api/maintenance', authenticateToken, async (req, res) => {
   try {
     const requests = await prisma.maintenanceRequest.findMany({
+      where: req.user.role === 'ADMIN' ? {} : { userId: req.user.id },
       orderBy: { createdAt: 'desc' }
     });
     res.json(await withReporters(requests));
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch maintenance requests', error: err.message });
+    serverError(res, err, 'Failed to fetch maintenance requests');
   }
 });
 
-// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่ (ล็อกอินอยู่ = ผู้แจ้งคือผู้ใช้คนนั้น)
-app.post('/api/maintenance', optionalToken, async (req, res) => {
+// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่ (ผู้แจ้งคือผู้ใช้ที่ล็อกอินอยู่)
+app.post('/api/maintenance', authenticateToken, async (req, res) => {
   try {
-    const { roomId, userId, title, description } = req.body;
+    const { title, description } = req.body;
+    const roomId = Number(req.body.roomId);
+    if (!Number.isInteger(roomId) || roomId < 1) {
+      return res.status(400).json({ message: 'หมายเลขห้องไม่ถูกต้อง' });
+    }
     if (!String(title || '').trim() || !String(description || '').trim()) {
       return res.status(400).json({ message: 'กรุณาระบุอุปกรณ์ที่ชำรุดและรายละเอียดอาการ' });
     }
     const newRequest = await prisma.maintenanceRequest.create({
       data: {
-        roomId: Number(roomId),
-        userId: req.user?.id ?? Number(userId || 1),
-        title: String(title).trim(),
-        description: String(description).trim(),
+        roomId,
+        userId: req.user.id,
+        title: String(title).trim().slice(0, 200),
+        description: String(description).trim().slice(0, 2000),
         status: 'PENDING'
       }
     });
     const [withUser] = await withReporters([newRequest]);
     // แจ้งเตือนผู้จัดการหอพักแบบ Real-time (กระดิ่งบนแถบด้านบน)
-    io.emit('maintenance_created', withUser);
+    emitMaintenance('maintenance_created', withUser);
     res.status(201).json(withUser);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to create request', error: err.message });
+    serverError(res, err, 'Failed to create request');
   }
 });
 
 // PATCH /api/maintenance/:id/status - อัปเดตสถานะการแจ้งซ่อม (เฉพาะ Admin)
-app.patch('/api/maintenance/:id/status', authenticateToken, async (req, res) => {
+app.patch('/api/maintenance/:id/status', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    if (req.user?.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Forbidden: สงวนสิทธิ์สำหรับผู้จัดการหอพัก (Admin) เท่านั้น' });
-    }
     const { id } = req.params;
     const { status } = req.body;
     if (!MAINTENANCE_STATUSES.includes(status)) {
@@ -342,10 +418,11 @@ app.patch('/api/maintenance/:id/status', authenticateToken, async (req, res) => 
       where: { id: Number(id) },
       data: { status }
     });
-    io.emit('maintenance_updated', updated);
+    emitMaintenance('maintenance_updated', updated);
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to update status', error: err.message });
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Request not found' });
+    serverError(res, err, 'Failed to update status');
   }
 });
 
@@ -353,15 +430,33 @@ app.patch('/api/maintenance/:id/status', authenticateToken, async (req, res) => 
 // 5. Admin API (ระบบหลังบ้าน) — ดูรายละเอียดใน adminRoutes.js
 // ==========================================
 // หน้าแดชบอร์ดผู้ดูแล (จาก branch kit) — ต้องมาก่อน adminRoutes
-require('./adminDashboardRoutes')({ app, prisma, authenticateToken });
-require('./adminRoutes')({ app, prisma, authenticateToken });
-require('./studentRoutes')({ app, prisma, authenticateToken });
-require('./profileRoutes')({ app, prisma, authenticateToken });
+const deps = { app, prisma, authenticateToken, requireAdmin, serverError };
+require('./adminDashboardRoutes')(deps);
+require('./adminRoutes')(deps);
+require('./studentRoutes')(deps);
+require('./profileRoutes')(deps);
 require('./registrationPeriod')({ app });
+require('./demoLogin')({ app, prisma, signToken, serverError });
 
 // ==========================================
 // 4. Real-time Power Monitoring (Socket.io)
 // ==========================================
+
+// ไม่บังคับ token (ฟีดค่าไฟเปิดให้ทุกคน) แต่ถ้าแนบมาจะเข้าห้องของผู้ใช้/ผู้จัดการ เพื่อรับการแจ้งเตือนแจ้งซ่อม
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    const user = token ? await userFromToken(token) : null;
+    if (user) {
+      socket.join(`user:${user.id}`);
+      if (user.role === 'ADMIN') socket.join('admins');
+    }
+    next();
+  } catch (err) {
+    console.error(err);
+    next();
+  }
+});
 
 let accumulatedUnits = 142.5; // หน่วยไฟสะสมเริ่มต้น (kWh)
 const UNIT_RATE = 7.0;        // ค่าไฟหน่วยละ 7 บาท
@@ -371,7 +466,7 @@ setInterval(() => {
   const current = +(Math.random() * 4.5 + 0.5).toFixed(2);
   const voltage = +(218 + Math.random() * 5).toFixed(1);
   const power = +((voltage * current) / 1000).toFixed(3); // kW
-  
+
   accumulatedUnits += +(power * (3 / 3600)).toFixed(4);
   const estimatedCost = +(accumulatedUnits * UNIT_RATE).toFixed(2);
 

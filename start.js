@@ -1,4 +1,5 @@
 const { spawn, exec, execSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -13,8 +14,10 @@ console.log('\x1b[33m%s\x1b[0m', '==============================================
 // สร้างไฟล์ .env ของ Backend จาก .env.example ถ้ายังไม่มี
 const backendEnv = path.join(backendDir, '.env');
 if (!fs.existsSync(backendEnv)) {
-  fs.copyFileSync(path.join(backendDir, '.env.example'), backendEnv);
-  console.log('\x1b[33m[Backend]\x1b[0m สร้างไฟล์ .env จาก .env.example แล้ว');
+  // ใส่ JWT_SECRET แบบสุ่มให้แต่ละเครื่อง (backend ไม่ยอมเริ่มถ้าไม่มี)
+  const example = fs.readFileSync(path.join(backendDir, '.env.example'), 'utf8');
+  fs.writeFileSync(backendEnv, example.replace(/^JWT_SECRET=.*$/m, `JWT_SECRET=${crypto.randomBytes(48).toString('base64')}`));
+  console.log('\x1b[33m[Backend]\x1b[0m สร้างไฟล์ .env จาก .env.example แล้ว (สุ่ม JWT_SECRET ให้)');
 }
 
 // ติดตั้ง Dependencies อัตโนมัติถ้ายังไม่มี node_modules (เช่น เพิ่ง clone โปรเจกต์มา)

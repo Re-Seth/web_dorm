@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-import axios from 'axios';
 import studentApi from './studentApi';
+import socket from './services/socket';
 import { Activity, ClipboardList, Gauge, PlugZap, Receipt, Send, Wrench, Zap } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const socket = io(API_BASE);
-const API_URL = `${API_BASE}/api/maintenance`;
 
 const STATUS_BADGE = {
   PENDING: ['รอดำเนินการ', 'bg-amber-50 text-amber-700 border-amber-200'],
@@ -30,20 +25,20 @@ export default function DormServices() {
   const [roomId, setRoomId] = useState(101);
 
   useEffect(() => {
-    socket.on('power_update', (data) => {
-      setPower(data);
-    });
+    const onPower = (data) => setPower(data);
+    socket.on('power_update', onPower);
 
     fetchRequests();
 
     return () => {
-      socket.off('power_update');
+      socket.off('power_update', onPower);
     };
   }, []);
 
   const fetchRequests = async () => {
     try {
-      const res = await axios.get(API_URL);
+      // backend ส่งเฉพาะรายการที่ผู้ใช้คนนี้แจ้ง (Admin เห็นทั้งหมด)
+      const res = await studentApi.get('/api/maintenance');
       setRequests(res.data);
     } catch (err) {
       console.error(err);
