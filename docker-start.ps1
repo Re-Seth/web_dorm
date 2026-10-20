@@ -15,6 +15,12 @@ Write-Line '========================================================' DarkYellow
 Write-Host ''
 
 # 1) ต้องมี Docker
+# เพิ่มโฟลเดอร์ bin ของ Docker Desktop เข้า PATH (เพิ่งติดตั้งแล้วยังไม่รีสตาร์ท PATH จะยังไม่มี
+# ทำให้หา docker หรือ docker-credential-desktop ไม่เจอ: "error getting credentials")
+$dockerBin = Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'
+if ((Test-Path -LiteralPath $dockerBin) -and (($env:Path -split ';') -notcontains $dockerBin)) {
+    $env:Path = "$dockerBin;$env:Path"
+}
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Write-Line '[X] ไม่พบคำสั่ง docker ในเครื่องนี้' Red
     Write-Line '    กรุณาติดตั้ง Docker Desktop: https://www.docker.com/products/docker-desktop/'
@@ -63,7 +69,11 @@ docker compose up -d --build
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Line '[X] ไม่สามารถเริ่มระบบด้วย Docker ได้ (ดูข้อความ error ด้านบน)' Red
-    Write-Line '    สาเหตุที่พบบ่อย: พอร์ต 5000 หรือ 8080 ถูกโปรแกรมอื่นใช้อยู่'
+    Write-Line 'สาเหตุที่พบบ่อย:'
+    Write-Line ' - "port is already allocated": พอร์ต 5000 หรือ 8080 ถูกโปรแกรมอื่นใช้อยู่ ให้ปิดโปรแกรมนั้นก่อน'
+    Write-Line ' - "error getting credentials" / "docker-credential-desktop ... not found": รีสตาร์ทเครื่องแล้วลองใหม่'
+    Write-Line '   ถ้ายังไม่หาย เปิดไฟล์ %USERPROFILE%\.docker\config.json แล้วลบบรรทัด "credsStore": "desktop"'
+    Write-Line ' - "container name ... is already in use": รันคำสั่ง  docker rm -f dorm_backend dorm_frontend  แล้วลองใหม่'
     exit 1
 }
 
