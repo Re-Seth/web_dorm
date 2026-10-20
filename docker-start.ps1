@@ -9,6 +9,73 @@ function Test-DockerEngine {
     return $LASTEXITCODE -eq 0
 }
 
+# config.json ของ Docker สั่งให้ใช้ credential helper (เช่น docker-credential-desktop) ที่หาไม่เจอ
+# → ดึง image ไม่ได้ ("error getting credentials") จึงใช้ config เปล่าชั่วคราวเฉพาะสคริปต์นี้
+# (image ที่ใช้เป็น public ไม่ต้องล็อกอิน และไม่แก้ไฟล์ config จริงของผู้ใช้)
+function Use-CleanDockerConfigIfNeeded {
+    $cfgDir = if ($env:DOCKER_CONFIG) { $env:DOCKER_CONFIG } else { Join-Path $HOME '.docker' }
+    $cfgFile = Join-Path $cfgDir 'config.json'
+    if (-not (Test-Path -LiteralPath $cfgFile)) { return }
+    try { $cfg = Get-Content -LiteralPath $cfgFile -Raw | ConvertFrom-Json } catch { return }
+    $helpers = @()
+    if ($cfg.credsStore) { $helpers += $cfg.credsStore }
+    if ($cfg.credHelpers) { $helpers += $cfg.credHelpers.PSObject.Properties | ForEach-Object { $_.Value } }
+    $missing = @($helpers | Where-Object { -not (Get-Command "docker-credential-$_" -ErrorAction SilentlyContinue) })
+    if ($missing.Count -eq 0) { return }
+
+    # จำ endpoint ของ context ปัจจุบันไว้ก่อน เพราะ config ใหม่จะไม่รู้จัก context เดิม
+    $endpoint = docker context inspect --format '{{.Endpoints.docker.Host}}' 2>$null
+    $tmp = Join-Path $env:TEMP 'taothong-docker-config'
+    New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $tmp 'config.json'), '{}')
+    if ($endpoint) { $env:DOCKER_HOST = "$endpoint".Trim() }
+    $env:DOCKER_CONFIG = $tmp
+    Write-Line "หาโปรแกรม docker-credential-$($missing -join ', ') ไม่เจอ — ใช้การตั้งค่า Docker ชั่วคราวแทน (ไม่แก้ไฟล์เดิม)" Yellow
+    if (-not (Test-DockerEngine)) {
+        # ถ้าต่อ engine ด้วยวิธีนี้ไม่ได้ ให้กลับไปใช้ค่าเดิม
+        Remove-Item Env:DOCKER_CONFIG, Env:DOCKER_HOST -ErrorAction SilentlyContinue
+        Write-Line '  (ใช้การตั้งค่าชั่วคราวไม่ได้ กลับไปใช้ค่าเดิม)' Yellow
+    }
+}
+
+# ปิดของเก่าที่ชนกับระบบนี้: container ชื่อเดิม (จากโฟลเดอร์/เวอร์ชันก่อน) และสิ่งที่จองพอร์ต 5000 / 8080
+function Stop-OldInstances {
+    $old = @('dorm_backend', 'dorm_frontend' | Where-Object { docker container inspect $_ *> $null; $LASTEXITCODE -eq 0 })
+    if ($old.Count) {
+        Write-Line 'ปิด container เวอร์ชันเก่า (dorm_backend / dorm_frontend) — ข้อมูลใน volume ยังอยู่' Yellow
+        docker rm -f dorm_backend dorm_frontend *> $null
+    }
+    foreach ($port in 5000, 8080) {
+        foreach ($id in @(docker ps -q --filter "publish=$port" 2>$null)) {
+            $name = docker inspect --format '{{.Name}}' $id 2>$null
+            Write-Line "หยุด container $name ที่ใช้พอร์ต $port อยู่" Yellow
+            docker stop $id *> $null
+        }
+    }
+    # โปรแกรมบนเครื่องที่ยังจองพอร์ต (ไม่นับตัว Docker เอง)
+    $blocked = @()
+    foreach ($port in 5000, 8080) {
+        $conns = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+        foreach ($procId in ($conns.OwningProcess | Sort-Object -Unique)) {
+            $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+            if (-not $proc -or $proc.ProcessName -match '^(com\.docker\..*|wslrelay|vpnkit.*|Docker.*)$') { continue }
+            if ($proc.ProcessName -eq 'node') {
+                # น่าจะเป็น dev server ของโปรเจกต์นี้ (start.js / npm run dev) ที่ค้างอยู่
+                Write-Line "ปิด node (PID $procId) ที่ใช้พอร์ต $port อยู่" Yellow
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            } else {
+                $blocked += "พอร์ต $port ถูกใช้โดยโปรแกรม $($proc.ProcessName) (PID $procId)"
+            }
+        }
+    }
+    if ($blocked.Count) {
+        Write-Line '[X] พอร์ตที่ระบบต้องใช้ถูกโปรแกรมอื่นจองอยู่:' Red
+        $blocked | ForEach-Object { Write-Line "    $_" Red }
+        Write-Line '    กรุณาปิดโปรแกรมนั้นก่อน แล้วดับเบิลคลิก docker-start.bat ใหม่'
+        exit 1
+    }
+}
+
 Write-Line '========================================================' DarkYellow
 Write-Line ' กำลังเริ่มต้นระบบ หอพักเทาทอง (Web Dorm) ด้วย Docker...' Green
 Write-Line '========================================================' DarkYellow
@@ -55,6 +122,8 @@ if (-not (Test-DockerEngine)) {
     }
 }
 Write-Line '[OK] เชื่อมต่อ Docker แล้ว' Green
+Use-CleanDockerConfigIfNeeded
+Stop-OldInstances
 
 # 3) สร้าง .env พร้อม JWT_SECRET แบบสุ่มในครั้งแรก (docker-compose.yml บังคับให้ต้องมี)
 if (-not (Test-Path -LiteralPath '.env')) {
