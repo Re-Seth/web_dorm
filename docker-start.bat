@@ -8,8 +8,26 @@ echo  🚀 กำลังเริ่มต้นระบบ หอพัก�
 echo ========================================================
 echo.
 
+where docker >nul 2>nul
+if errorlevel 1 goto nodockercli
+
 docker info >nul 2>nul
-if errorlevel 1 goto nodocker
+if not errorlevel 1 goto dockerready
+
+rem Docker Engine ยังไม่พร้อม: เปิด Docker Desktop ให้ (ถ้ายังไม่เปิด) แล้วรอสูงสุด ~2 นาที
+echo ⏳ Docker Engine ยังไม่พร้อม กำลังเปิด Docker Desktop และรอสักครู่ (สูงสุด 2 นาที)...
+if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+set /a tries=0
+:waitdocker
+ping -n 6 127.0.0.1 >nul
+docker info >nul 2>nul
+if not errorlevel 1 goto dockerready
+set /a tries+=1
+if %tries% lss 24 goto waitdocker
+goto nodocker
+
+:dockerready
+echo ✅ เชื่อมต่อ Docker แล้ว
 
 rem สร้าง .env พร้อม JWT_SECRET แบบสุ่มในครั้งแรก (docker-compose.yml บังคับให้ต้องมี)
 if exist .env goto envready
@@ -36,9 +54,25 @@ echo ========================================================
 pause
 exit /b 0
 
+:nodockercli
+echo ❌ ไม่พบคำสั่ง docker ในเครื่องนี้
+echo กรุณาติดตั้ง Docker Desktop: https://www.docker.com/products/docker-desktop/
+echo ติดตั้งเสร็จให้รีสตาร์ทเครื่อง เปิด Docker Desktop แล้วดับเบิลคลิกไฟล์นี้ใหม่
+pause
+exit /b 1
+
 :nodocker
-echo ❌ เชื่อมต่อ Docker ไม่ได้
-echo กรุณาติดตั้งและเปิด Docker Desktop ให้ขึ้นสถานะ Running ก่อน แล้วดับเบิลคลิกไฟล์นี้ใหม่
+echo.
+echo ❌ เชื่อมต่อ Docker Engine ไม่ได้ — ข้อความจาก Docker:
+echo --------------------------------------------------------
+docker info 2>&1 | findstr /i "error cannot denied pipe daemon"
+echo --------------------------------------------------------
+echo วิธีแก้ที่พบบ่อย:
+echo  1. เปิด Docker Desktop แล้วรอจนมุมล่างซ้ายขึ้น "Engine running" จากนั้นดับเบิลคลิกไฟล์นี้ใหม่
+echo  2. ถ้า Docker Desktop เปิดไม่ขึ้นหรือแจ้งเรื่อง WSL: เปิด PowerShell แบบ Run as administrator
+echo     รันคำสั่ง  wsl --install  แล้วรีสตาร์ทเครื่อง
+echo  3. ถ้าข้อความมีคำว่า "Access is denied" / "permission denied":
+echo     ออกจากระบบ Windows แล้วเข้าใหม่ หรือเพิ่มบัญชีเข้ากลุ่ม docker-users
 pause
 exit /b 1
 
