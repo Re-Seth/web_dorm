@@ -4,6 +4,7 @@ import {
   ArrowRight, BookmarkCheck, ChevronRight, Dumbbell, FileSignature, Laptop, MapPin, Mars, PencilLine,
   Shirt, ShieldCheck, SquareParking, Venus, Wifi,
 } from 'lucide-react'
+import DormMap from '../components/landing/DormMap'
 import LoginCard from '../components/landing/LoginCard'
 import SiteHeader from '../components/landing/SiteHeader'
 import { BUILDINGS, GENDER_LABEL, ROOM_FILTERS } from '../data/landing'
@@ -243,41 +244,7 @@ export default function Landing() {
             </div>
 
             <div className="lg:col-span-7">
-              <div className="relative w-full min-h-96 rounded-3xl overflow-hidden border border-japandi-sand shadow-inner bg-[#E5E3DF] p-4 sm:p-6">
-                <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" aria-hidden="true">
-                  <defs>
-                    <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3D332A" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#map-grid)" />
-                </svg>
-                <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 h-full min-h-[22rem]">
-                  {BUILDINGS.map((b) => {
-                    const g = genderStyle[b.gender]
-                    const active = activePin === b.id
-                    const dimmed = activePin && !active
-                    return (
-                      <div
-                        key={b.id}
-                        className={
-                          `bg-white/90 backdrop-blur p-3 sm:p-4 rounded-2xl border-2 ${g.border} shadow-md flex flex-col justify-between gap-2 transition-all duration-300 ` +
-                          (active ? 'scale-105 shadow-2xl ring-4 ring-japandi-terracotta/40 ' : '') +
-                          (dimmed ? 'opacity-50' : '')
-                        }
-                      >
-                        <div>
-                          <span className={`text-xs font-bold ${g.text} block`}>{b.name} ({GENDER_LABEL[b.gender]})</span>
-                          <p className="text-[11px] text-japandi-muted">{b.mapArea}</p>
-                        </div>
-                        <div className="text-[10px] flex items-center gap-1 font-medium">
-                          <MapPin size={11} className="text-japandi-terracotta shrink-0" /> {b.mapNote}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              <DormMap buildings={BUILDINGS} activeId={activePin} onSelect={setActivePin} />
             </div>
           </div>
         </Reveal>

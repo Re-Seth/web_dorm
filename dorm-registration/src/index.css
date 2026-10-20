@@ -103,3 +103,46 @@ textarea:focus-visible {
 .theme-japandi .field {
   @apply bg-white rounded-xl focus:ring-2 focus:ring-gold/20;
 }
+
+/* หมุดตึกบนแผนที่หน้าแรก (DormMap) */
+.dorm-pin {
+  position: relative;
+  width: 28px;
+  height: 36px;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.3));
+  transform-origin: bottom center;
+  transition: transform 0.2s ease;
+}
+.dorm-pin:hover,
+.dorm-pin.is-active {
+  transform: scale(1.25);
+}
+.dorm-pin-label {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1.5px solid var(--pin);
+  color: var(--pin);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.dorm-pin.is-active .dorm-pin-label {
+  background: var(--pin);
+  color: #fff;
+}
+.dorm-popup strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.dorm-popup p {
+  margin: 0;
+  font-size: 12px;
+  color: #6b5e52;
+}
