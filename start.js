@@ -35,6 +35,7 @@ for (const [label, dir] of [['Backend', backendDir], ['Frontend', frontendDir]])
 
 // สร้าง/อัปเดตตารางในฐานข้อมูลให้ตรงกับ schema (ไฟล์ .db ไม่อยู่ใน git — เพิ่ง clone มาจะยังไม่มีฐานข้อมูล)
 try {
+  execSync('node prisma/prepare-db.js', { cwd: backendDir, stdio: 'inherit' });
   execSync('npx prisma db push', { cwd: backendDir, stdio: 'inherit' });
 } catch (err) {
   console.error('\x1b[31m[Backend]\x1b[0m prisma db push ไม่สำเร็จ — ตรวจสอบ DATABASE_URL ใน .env หรือรัน npx prisma db push เองเพื่อดูรายละเอียด');
