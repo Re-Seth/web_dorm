@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useRegistration } from '../context/RegistrationContext'
 import api, { errMsg } from '../studentApi'
 
@@ -9,25 +9,42 @@ const METHODS = [
 ]
 
 export default function Payment() {
-  const { payment, completePayment } = useRegistration()
+  const { loading, booking, payment, refresh } = useRegistration()
   const [method, setMethod] = useState('qr')
   const [processing, setProcessing] = useState(false)
+  const lockRef = useRef(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
   async function handlePay() {
+    if (lockRef.current) return // กันดับเบิลคลิก (state อัปเดตไม่ทันระหว่างคลิกติดกัน)
+    lockRef.current = true
     setProcessing(true)
     setError('')
     try {
       // บันทึกการชำระเงินลงฐานข้อมูล (ยังเป็นการชำระจำลอง ไม่มี payment gateway)
-      const { data } = await api.post('/api/bookings/pay', { method })
-      completePayment(method, data.receiptNo, data.paidAt)
+      await api.post('/api/bookings/pay', { method })
+      await refresh()
       navigate('/app/receipt')
     } catch (e) {
       setError(errMsg(e))
     } finally {
+      lockRef.current = false
       setProcessing(false)
     }
+  }
+
+  if (loading) return <p className="text-sm text-bone/50">กำลังโหลด…</p>
+
+  // ยังไม่มีการจอง (เช่น เปิดหน้านี้ทาง URL ตรง หรือแอดมินยกเลิกการจองไปแล้ว)
+  if (!booking.confirmed) {
+    return (
+      <div className="max-w-lg card space-y-3">
+        <h1 className="font-display text-xl font-semibold">ยังไม่มีการจองห้องพัก</h1>
+        <p className="text-bone/60 text-sm">กรุณาเลือกห้องพักก่อน แล้วจึงชำระเงิน</p>
+        <Link to="/app/rooms" className="btn-primary inline-block">ไปเลือกห้องพัก →</Link>
+      </div>
+    )
   }
 
   if (payment.status === 'paid') {
@@ -45,7 +62,7 @@ export default function Payment() {
   return (
     <div className="max-w-lg">
       <h1 className="font-display text-2xl font-semibold mb-1">ชำระเงินค่าหอพัก</h1>
-      <p className="text-bone/50 mb-6">ยอดชำระสำหรับการจองห้องพัก</p>
+      <p className="text-bone/50 mb-6">ยอดชำระสำหรับการจองห้อง <span className="font-mono">{booking.roomCode}</span></p>
 
       <div className="card mb-6 text-center">
         <p className="text-bone/50 text-sm mb-1">ยอดที่ต้องชำระ</p>
@@ -91,7 +108,7 @@ export default function Payment() {
         <div className="card mb-6 text-sm space-y-2">
           <p className="text-bone/50">โอนเข้าบัญชี</p>
           <p className="font-mono">ธนาคารกรุงไทย · 123-4-56789-0</p>
-          <p>ชื่อบัญชี: มหาวิทยาลัยบูรพา (หอพักเทาทอง)</p>
+          <p>ชื่อบัญชี: หอพักเทาทอง</p>
         </div>
       )}
 

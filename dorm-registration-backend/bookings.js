@@ -1,18 +1,30 @@
 // ==========================================
-// งานที่ใช้ร่วมกันของการจอง: กันจองเกินความจุห้อง และออกเลขใบเสร็จ
+// งานที่ใช้ร่วมกันของการจอง: กันจองเกินความจุห้อง / จองซ้ำ, ค่าลงทะเบียน และออกเลขใบเสร็จ
 // ==========================================
 const { Prisma } = require('@prisma/client');
 
-class RoomFullError extends Error {}
+// ค่าลงทะเบียน (บาท) — แหล่งเดียวของยอดเงิน ทั้งที่บันทึกในฐานข้อมูลและที่หน้าเว็บแสดง
+const REGISTRATION_FEE = Number(process.env.REGISTRATION_FEE) || 1999;
 
-// เขียนการจองใน transaction แล้วนับผู้พักซ้ำหลังเขียน — ถ้าเกินความจุให้ rollback
-// (กันกรณีหลายคนกดจองห้องเดียวกันพร้อมกัน ซึ่งการนับก่อนเขียนอย่างเดียวกันไม่ได้)
-function writeWithinCapacity(prisma, roomId, write) {
+class RoomFullError extends Error {}
+class DuplicateBookingError extends Error {}
+
+const ACTIVE = { status: { not: 'CANCELLED' } };
+
+// เขียนการจองใน transaction แล้วตรวจซ้ำหลังเขียน — ถ้าผิดกฎให้ rollback:
+//   - ห้องเกินความจุ (หลายคนกดจองห้องเดียวกันพร้อมกัน)
+//   - ผู้ใช้คนเดียวมีการจองที่ยังไม่ถูกยกเลิกมากกว่า 1 รายการ (กดยืนยันซ้ำ / ส่งพร้อมกันหลายแท็บ)
+// การนับก่อนเขียนอย่างเดียวกันกรณีส่งพร้อมกันไม่ได้
+function writeBooking(prisma, { roomId, userId }, write) {
   return prisma.$transaction(async (tx) => {
     const result = await write(tx);
     const room = await tx.room.findUnique({ where: { id: roomId } });
-    const taken = await tx.booking.count({ where: { roomId, status: { not: 'CANCELLED' } } });
+    const taken = await tx.booking.count({ where: { roomId, ...ACTIVE } });
     if (taken > room.capacity) throw new RoomFullError();
+    if (userId) {
+      const mine = await tx.booking.count({ where: { userId, ...ACTIVE } });
+      if (mine > 1) throw new DuplicateBookingError();
+    }
     return result;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
@@ -23,4 +35,4 @@ function receiptNoFor(bookingId, paidAt = new Date()) {
   return `RCPT-${ymd}-${String(bookingId).padStart(6, '0')}`;
 }
 
-module.exports = { RoomFullError, writeWithinCapacity, receiptNoFor };
+module.exports = { REGISTRATION_FEE, RoomFullError, DuplicateBookingError, writeBooking, receiptNoFor };

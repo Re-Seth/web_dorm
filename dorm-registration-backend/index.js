@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { PrismaClient } = require('@prisma/client');
-const { passwordError, emailError, usernameError, nameError } = require('./validation');
+const { passwordError, emailError, usernameError, nameError, clip, isText } = require('./validation');
 require('dotenv').config();
 
 // ต้องตั้ง JWT_SECRET ใน .env เสมอ — ถ้าใช้ค่าที่เดาได้ คนอื่นจะปลอม token เป็น Admin ได้
@@ -21,6 +21,10 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://l
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const app = express();
+app.disable('x-powered-by');
+// อยู่หลัง reverse proxy (nginx ใน Docker) → ใช้ IP จริงของผู้ใช้จาก X-Forwarded-For ในการจำกัดความถี่
+// ตั้ง TRUST_PROXY = จำนวน proxy ที่อยู่ข้างหน้า (ไม่ได้ตั้ง = ไม่เชื่อ header นี้)
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 const server = http.createServer(app); // ใช้ร่วมกับ Socket.io
 const prisma = new PrismaClient();
 
@@ -61,6 +65,12 @@ const loginLimiter = limiter(15, 10, 'พยายามเข้าสู่ร
   keyGenerator: (req) => `${req.ip}|${String(req.body?.username ?? req.user?.id ?? '').toLowerCase()}`,
 });
 const registerLimiter = limiter(15, 30, 'สมัครสมาชิกบ่อยเกินไป กรุณาลองใหม่ภายหลัง');
+const maintenanceLimiter = limiter(60, 10, 'แจ้งซ่อมบ่อยเกินไป กรุณาลองใหม่ภายหลัง', {
+  keyGenerator: (req) => `user:${req.user?.id}`,
+});
+
+// ใช้เทียบรหัสผ่านเมื่อไม่พบผู้ใช้ ให้เวลาตอบใกล้เคียงกัน (กันเดาว่าบัญชีไหนมีอยู่จากเวลาที่ใช้)
+const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-timing', 10);
 const lookupLimiter = limiter(1, 30, 'เรียกใช้งานบ่อยเกินไป กรุณาลองใหม่ภายหลัง');
 
 const signToken = (user) =>
@@ -97,7 +107,7 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const user = await userFromToken(token);
-    if (!user) return res.status(403).json({ message: 'Invalid or expired token' });
+    if (!user) return res.status(401).json({ message: 'Invalid or expired token' });
     req.user = user;
     next();
   } catch (err) {
@@ -125,6 +135,10 @@ app.post('/register', registerLimiter, async (req, res) => {
     const invalid = usernameError(username) || emailError(email) || passwordError(password) || nameError(name);
     if (invalid) return res.status(400).json({ message: invalid });
 
+    // ห้ามตั้ง username ให้ตรงกับอีเมลของคนอื่น (และกลับกัน) — login รับได้ทั้งสองแบบ จะจับคู่บัญชีผิด
+    const clash = await prisma.user.findFirst({ where: { OR: [{ email: username }, { username: email }] } });
+    if (clash) return res.status(400).json({ message: 'อีเมลหรือชื่อผู้ใช้นี้มีบัญชีอยู่แล้ว' });
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -135,7 +149,7 @@ app.post('/register', registerLimiter, async (req, res) => {
     res.status(201).json({ message: 'User registered successfully', user });
   } catch (err) {
     if (err.code === 'P2002') {
-      return res.status(400).json({ message: 'Username or Email already exists' });
+      return res.status(400).json({ message: 'อีเมลหรือชื่อผู้ใช้นี้มีบัญชีอยู่แล้ว' });
     }
     serverError(res, err);
   }
@@ -151,7 +165,8 @@ app.post('/login', loginLimiter, async (req, res) => {
 
     // เข้าสู่ระบบได้ทั้ง username หรืออีเมล
     const user = await prisma.user.findFirst({ where: { OR: [{ username }, { email: username }] } });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const ok = await bcrypt.compare(password, user ? user.password : DUMMY_HASH);
+    if (!user || !ok) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
@@ -196,6 +211,7 @@ app.post('/change-password', authenticateToken, loginLimiter, async (req, res) =
       data: { password: hashedNewPassword, passwordChangedAt: new Date() }
     });
 
+    kickUserSockets(userId);
     res.json({ message: 'Password updated successfully', token: signToken(updated) });
   } catch (err) {
     serverError(res, err);
@@ -312,6 +328,7 @@ app.put('/users/:id', authenticateToken, async (req, res) => {
       data: { name, email, role },
       select: { id: true, username: true, email: true, name: true, role: true, updatedAt: true }
     });
+    if (role !== undefined) kickUserSockets(id);
 
     res.json({ message: 'User updated successfully', user: updatedUser });
   } catch (err) {
@@ -334,7 +351,12 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only delete your own account' });
     }
 
-    await prisma.user.delete({ where: { id } });
+    // schema ลบโปรไฟล์/รีวิว/แจ้งซ่อมตามไปด้วย — การจองที่ยังไม่ยกเลิกต้องยกเลิกก่อน ไม่งั้นเตียงจะถูกถือไว้ตลอด
+    await prisma.$transaction([
+      prisma.booking.updateMany({ where: { userId: id, status: { not: 'CANCELLED' } }, data: { status: 'CANCELLED' } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
+    kickUserSockets(id);
 
     res.json({ message: `User ID ${id} deleted successfully` });
   } catch (err) {
@@ -351,13 +373,19 @@ app.delete('/users/:id', authenticateToken, async (req, res) => {
 
 const MAINTENANCE_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
-// แนบชื่อผู้แจ้ง (user) ให้รายการแจ้งซ่อม — หน้าผู้จัดการหอพักใช้แสดง "ผู้แจ้ง"
+// แนบชื่อผู้แจ้ง (user) และรหัสห้อง (roomCode) ให้รายการแจ้งซ่อม — หน้าผู้จัดการหอพักใช้แสดง "ผู้แจ้ง"
 async function withReporters(requests) {
   const ids = [...new Set(requests.map((r) => r.userId).filter(Boolean))];
-  const users = ids.length
-    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, name: true } })
-    : [];
-  return requests.map((r) => ({ ...r, user: users.find((u) => u.id === r.userId) || null }));
+  const roomIds = [...new Set(requests.map((r) => r.roomId).filter(Boolean))];
+  const [users, rooms] = await Promise.all([
+    ids.length ? prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, username: true, name: true } }) : [],
+    roomIds.length ? prisma.room.findMany({ where: { id: { in: roomIds } }, select: { id: true, code: true } }) : [],
+  ]);
+  return requests.map((r) => ({
+    ...r,
+    user: users.find((u) => u.id === r.userId) || null,
+    roomCode: rooms.find((room) => room.id === r.roomId)?.code || null,
+  }));
 }
 
 // ส่งเหตุการณ์แจ้งซ่อมให้เฉพาะผู้จัดการหอพัก และผู้แจ้งรายการนั้น
@@ -377,23 +405,26 @@ app.get('/api/maintenance', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/maintenance - สร้างรายการแจ้งซ่อมใหม่ (ผู้แจ้งคือผู้ใช้ที่ล็อกอินอยู่)
-app.post('/api/maintenance', authenticateToken, async (req, res) => {
+// POST /api/maintenance - แจ้งซ่อมห้องที่ตัวเองจองไว้ (ผู้แจ้งคือผู้ใช้ที่ล็อกอินอยู่, ห้องมาจากการจองของผู้แจ้ง)
+app.post('/api/maintenance', authenticateToken, maintenanceLimiter, async (req, res) => {
   try {
     const { title, description } = req.body;
-    const roomId = Number(req.body.roomId);
-    if (!Number.isInteger(roomId) || roomId < 1) {
-      return res.status(400).json({ message: 'หมายเลขห้องไม่ถูกต้อง' });
-    }
-    if (!String(title || '').trim() || !String(description || '').trim()) {
+    if (!isText(title) || !isText(description) || !clip(title, 200) || !clip(description, 2000)) {
       return res.status(400).json({ message: 'กรุณาระบุอุปกรณ์ที่ชำรุดและรายละเอียดอาการ' });
+    }
+    const booking = await prisma.booking.findFirst({
+      where: { userId: req.user.id, status: { not: 'CANCELLED' } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!booking) {
+      return res.status(400).json({ message: 'ต้องจองห้องพักก่อนจึงจะแจ้งซ่อมได้' });
     }
     const newRequest = await prisma.maintenanceRequest.create({
       data: {
-        roomId,
+        roomId: booking.roomId,
         userId: req.user.id,
-        title: String(title).trim().slice(0, 200),
-        description: String(description).trim().slice(0, 2000),
+        title: clip(title, 200),
+        description: clip(description, 2000),
         status: 'PENDING'
       }
     });
@@ -418,8 +449,9 @@ app.patch('/api/maintenance/:id/status', authenticateToken, requireAdmin, async 
       where: { id: Number(id) },
       data: { status }
     });
-    emitMaintenance('maintenance_updated', updated);
-    res.json(updated);
+    const [withUser] = await withReporters([updated]);
+    emitMaintenance('maintenance_updated', withUser);
+    res.json(withUser);
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Request not found' });
     serverError(res, err, 'Failed to update status');
@@ -430,7 +462,12 @@ app.patch('/api/maintenance/:id/status', authenticateToken, requireAdmin, async 
 // 5. Admin API (ระบบหลังบ้าน) — ดูรายละเอียดใน adminRoutes.js
 // ==========================================
 // หน้าแดชบอร์ดผู้ดูแล (จาก branch kit) — ต้องมาก่อน adminRoutes
-const deps = { app, prisma, authenticateToken, requireAdmin, serverError };
+// ตัดการเชื่อมต่อ socket ของผู้ใช้ (ถูกลดสิทธิ์/เปลี่ยนรหัสผ่าน/ถูกลบ) — เชื่อมใหม่จะถูกตรวจสิทธิ์ใหม่
+function kickUserSockets(userId) {
+  io.in(`user:${userId}`).disconnectSockets(true);
+}
+
+const deps = { app, prisma, authenticateToken, requireAdmin, serverError, kickUserSockets };
 require('./adminDashboardRoutes')(deps);
 require('./adminRoutes')(deps);
 require('./studentRoutes')(deps);
@@ -477,7 +514,7 @@ setInterval(() => {
     power: +(power * 1000).toFixed(0), // Watt
     energyUnits: +accumulatedUnits.toFixed(2),
     estimatedCost,
-    timestamp: new Date().toLocaleTimeString()
+    timestamp: new Date().toISOString() // หน้าเว็บแสดงเป็นเวลาไทยเอง
   };
 
   io.emit('power_update', powerData);
@@ -490,6 +527,30 @@ io.on('connection', (socket) => {
 // ==========================================
 // Start Server (ใช้ server.listen แทน app.listen เพื่อรองรับ WebSocket)
 // ==========================================
+// API path ที่ไม่มีอยู่ และ error จาก body parser (JSON ผิดรูป / body ใหญ่เกิน) → ตอบเป็น JSON ไม่ใช่หน้า HTML
+app.use((req, res) => res.status(404).json({ message: 'Not found' }));
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  if (err.type === 'entity.too.large') return res.status(413).json({ message: 'ข้อมูลที่ส่งมีขนาดใหญ่เกินไป' });
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ message: 'รูปแบบข้อมูลไม่ถูกต้อง' });
+  if (err.status && err.status < 500) return res.status(err.status).json({ message: 'คำขอไม่ถูกต้อง' });
+  serverError(res, err);
+});
+
+// SQLite: WAL ให้อ่านระหว่างมีคนเขียนได้ (ช่วงเปิดลงทะเบียนพร้อมกันหลายคน) / สร้างห้องให้ครบตามผังอาคาร
+(async () => {
+  try {
+    await prisma.$queryRawUnsafe('PRAGMA journal_mode = WAL;');
+  } catch (err) {
+    console.warn('⚠️  เปิด WAL ไม่สำเร็จ:', err.message);
+  }
+  try {
+    const created = await require('./adminRoutes').ensureRooms(prisma);
+    if (created) console.log(`🏠 สร้างห้องตามผังอาคารเพิ่ม ${created} ห้อง`);
+  } catch (err) {
+    console.error('❌ สร้างห้องตามผังไม่สำเร็จ:', err);
+  }
+})();
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Backend Server running on http://localhost:${PORT}`);

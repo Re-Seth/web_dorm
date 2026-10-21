@@ -56,13 +56,23 @@ export default function SiteHeader({ showNav = false }) {
               <a href={showNav ? '#login' : '/login'} className="px-4 py-2.5 rounded-full border border-japandi-sand bg-white text-sm font-medium text-japandi-oak hover:bg-japandi-sand/60 transition flex items-center gap-2">
                 <LogIn size={14} /> <span className="hidden sm:inline">เข้าสู่ระบบ</span>
               </a>
-              <Link to="/apply" className="px-4 sm:px-5 py-2.5 rounded-full bg-japandi-terracotta text-white font-medium text-sm hover:bg-japandi-terracotta-dark shadow-md transition flex items-center gap-2">
+              <Link to="/apply" className="whitespace-nowrap px-4 sm:px-5 py-2.5 rounded-full bg-japandi-terracotta text-white font-medium text-sm hover:bg-japandi-terracotta-dark shadow-md transition flex items-center gap-2">
                 <UserPlus size={14} /> ลงทะเบียน
               </Link>
             </>
           )}
         </div>
       </div>
+      {/* มือถือ/แท็บเล็ต: เมนูหน้าแรกเป็นแถบเลื่อนแนวนอนใต้หัวเว็บ */}
+      {showNav && (
+        <nav className="lg:hidden border-t border-japandi-sand overflow-x-auto" aria-label="เมนูหน้าแรก">
+          <div className="flex gap-1 px-4 py-2 text-sm font-medium text-japandi-oak whitespace-nowrap">
+            {NAV.map(([href, label]) => (
+              <a key={href} href={href} className="px-3 py-1.5 rounded-full hover:bg-japandi-sand/60 transition">{label}</a>
+            ))}
+          </div>
+        </nav>
+      )}
     </header>
   )
 }

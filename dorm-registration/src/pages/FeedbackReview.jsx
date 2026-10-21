@@ -1,35 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useRegistration } from '../context/RegistrationContext'
 import api, { errMsg } from '../studentApi'
 
 export default function FeedbackReview() {
-  const { review, submitReview } = useRegistration()
+  const { loading, review, payment, refresh } = useRegistration()
   const [rating, setRating] = useState(review.rating || 0)
   const [comment, setComment] = useState(review.comment || '')
+  const [editing, setEditing] = useState(false)
+
+  // รีวิวเดิมโหลดจาก server ทีหลัง → ใส่ค่าลงฟอร์ม (กดแก้ไขรีวิวได้)
+  useEffect(() => {
+    setRating(review.rating || 0)
+    setComment(review.comment || '')
+  }, [review.rating, review.comment])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const lockRef = useRef(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (lockRef.current) return // กันดับเบิลคลิก (state อัปเดตไม่ทันระหว่างคลิกติดกัน)
+    lockRef.current = true
     setBusy(true)
     setError('')
     try {
       await api.post('/api/reviews', { rating, comment })
-      submitReview({ rating, comment })
+      await refresh()
+      setEditing(false)
     } catch (err) {
       setError(errMsg(err))
     } finally {
+      lockRef.current = false
       setBusy(false)
     }
   }
 
-  if (review.submitted) {
+  if (loading) return <p className="text-sm text-bone/50">กำลังโหลด…</p>
+
+  if (payment.status !== 'paid') {
     return (
-      <div className="max-w-lg card text-center">
-        <h1 className="font-display text-xl font-semibold mb-2">ขอบคุณสำหรับความคิดเห็น</h1>
+      <div className="max-w-lg card space-y-3">
+        <h1 className="font-display text-xl font-semibold">รีวิวได้หลังชำระเงิน</h1>
+        <p className="text-bone/60 text-sm">กรุณาจองห้องและชำระเงินให้เรียบร้อยก่อน แล้วกลับมาให้คะแนนการใช้งานได้</p>
+        <Link to="/app" className="btn-primary inline-block">กลับหน้าหลักผู้เช่า</Link>
+      </div>
+    )
+  }
+
+  if (review.submitted && !editing) {
+    return (
+      <div className="max-w-lg card text-center space-y-3">
+        <h1 className="font-display text-xl font-semibold">ขอบคุณสำหรับความคิดเห็น</h1>
+        <p className="text-gold text-lg">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</p>
         <p className="text-bone/50 text-sm">
           ทีมงานหอพักเทาทองจะนำข้อมูลของคุณไปพัฒนาระบบให้ดียิ่งขึ้น
         </p>
+        <button className="btn-ghost" onClick={() => setEditing(true)}>แก้ไขรีวิว</button>
       </div>
     )
   }
@@ -69,6 +96,7 @@ export default function FeedbackReview() {
             className="field min-h-[100px]"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
+            maxLength={1000}
             placeholder="บอกเราเกี่ยวกับประสบการณ์การลงทะเบียน จอง และชำระเงิน…"
           />
         </div>

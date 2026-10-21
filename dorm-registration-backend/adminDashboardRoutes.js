@@ -4,12 +4,13 @@
 // ต้อง register ก่อน adminRoutes เพราะ GET /api/admin/users ที่นี่ส่งข้อมูลครบกว่า (มี booking/profile)
 // ==========================================
 const { DORMS } = require('./adminRoutes');
+const { RoomFullError, DuplicateBookingError, writeBooking } = require('./bookings');
 
 const ROOMS_PER_FLOOR = 10; // ตรงกับผังห้องฝั่ง frontend (src/data/dorms.js)
 const BED_CAPACITY = 4;
 const ACTIVE = { status: { not: 'CANCELLED' } };
 
-module.exports = function registerAdminDashboardRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
+module.exports = function registerAdminDashboardRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail, kickUserSockets }) {
   const guard = [authenticateToken, requireAdmin];
 
   const dormOf = (dormId) => DORMS.find((d) => d.id === dormId);
@@ -156,14 +157,22 @@ module.exports = function registerAdminDashboardRoutes({ app, prisma, authentica
       const id = Number(req.params.id);
       const booking = await prisma.booking.findUnique({ where: { id } });
       if (!booking?.receiptNo) return res.status(404).json({ message: 'ไม่พบรายการชำระเงินนี้' });
-      const updated = await prisma.booking.update({
+      const update = (tx) => tx.booking.update({
         where: { id },
         data: status === 'PAID'
           ? { paymentStatus: 'PAID', status: 'CONFIRMED', paidAt: booking.paidAt || new Date() }
           : { paymentStatus: 'UNPAID', status: 'PENDING' },
       });
+      // การจองที่ถูกยกเลิกไปแล้ว → การเปิดกลับมาต้องผ่านการตรวจความจุห้อง/การจองซ้ำ
+      const updated = booking.status === 'CANCELLED'
+        ? await writeBooking(prisma, { roomId: booking.roomId, userId: booking.userId }, update)
+        : await update(prisma);
       res.json({ message: 'อัปเดตสถานะการชำระเงินเรียบร้อย', payment: toKitPayment(updated) });
-    } catch (err) { fail(res, err, 'Failed to update payment status'); }
+    } catch (err) {
+      if (err instanceof RoomFullError) return res.status(400).json({ message: 'ห้องเต็มแล้ว เปิดการจองนี้กลับมาไม่ได้' });
+      if (err instanceof DuplicateBookingError) return res.status(400).json({ message: 'ผู้ใช้นี้มีการจองอื่นอยู่แล้ว' });
+      fail(res, err, 'Failed to update payment status');
+    }
   });
 
   app.get('/api/admin/users', ...guard, async (req, res) => {
@@ -191,6 +200,7 @@ module.exports = function registerAdminDashboardRoutes({ app, prisma, authentica
       if (!['USER', 'ADMIN'].includes(role)) return res.status(400).json({ message: 'Role must be USER or ADMIN' });
       if (id === req.user.id && role !== 'ADMIN') return res.status(400).json({ message: 'ไม่สามารถลดสิทธิ์ตัวเองได้' });
       const user = await prisma.user.update({ where: { id }, data: { role }, select: { id: true, username: true, role: true, name: true } });
+      kickUserSockets(id);
       res.json({ message: `อัปเดตสิทธิ์ของ ${user.username} เป็น ${role} เรียบร้อย`, user });
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'User not found' });

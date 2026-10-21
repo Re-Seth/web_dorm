@@ -3,8 +3,8 @@
 // ทุก endpoint ภายใต้ /api/admin ต้องใช้ JWT ของ user ที่ role = ADMIN
 // ==========================================
 const bcrypt = require('bcryptjs');
-const { passwordError, emailError, usernameError, nameError } = require('./validation');
-const { RoomFullError, writeWithinCapacity, receiptNoFor } = require('./bookings');
+const { passwordError, emailError, usernameError, nameError, clip, isText } = require('./validation');
+const { REGISTRATION_FEE, RoomFullError, DuplicateBookingError, writeBooking, receiptNoFor } = require('./bookings');
 
 // ต้องตรงกับ src/data/dorms.js ฝั่ง frontend
 const DORMS = [
@@ -14,11 +14,39 @@ const DORMS = [
   { id: 'tt4', name: 'หอพักเทาทอง 4', gender: 'หญิง', floors: 5 },
 ];
 
+const ROOMS_PER_FLOOR = 10; // ผังห้องมาตรฐาน: รหัสอาคาร (A-D) + ชั้น + เลขห้อง 01-10 เช่น A101
+const PAYMENT_METHODS = ['CASH', 'QR', 'BANK'];
 const ROOM_STATUSES = ['AVAILABLE', 'MAINTENANCE', 'CLOSED'];
+
+// รหัสห้องตามผัง เช่น ('tt1', 1, 1) → A101
+const roomCode = (dormIndex, floor, n) => `${String.fromCharCode(65 + dormIndex)}${floor}${String(n).padStart(2, '0')}`;
+
+// สร้างห้องทุกห้องตามผังที่ยังไม่มีในฐานข้อมูล (ข้ามห้องที่มีอยู่แล้ว) — นิสิตจองได้เฉพาะห้องที่มีอยู่จริงในตารางนี้
+async function ensureRooms(prisma) {
+  const existing = new Set((await prisma.room.findMany({ select: { code: true } })).map((r) => r.code));
+  let created = 0;
+  for (const [di, d] of DORMS.entries()) {
+    for (let f = 1; f <= d.floors; f++) {
+      for (let i = 1; i <= ROOMS_PER_FLOOR; i++) {
+        const code = roomCode(di, f, i);
+        if (existing.has(code)) continue;
+        await prisma.room.create({ data: { dormId: d.id, floor: f, code, capacity: 4 } });
+        created++;
+      }
+    }
+  }
+  return created;
+}
+
+// จำนวนเตียงต่อห้องที่แอดมินตั้งได้
+const parseCapacity = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 10 ? n : null;
+};
 const BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED'];
 const MAINT_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
 
-module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
+module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail, kickUserSockets }) {
   const guard = [authenticateToken, requireAdmin];
 
   // นับเฉพาะการจองที่ยังไม่ถูกยกเลิก
@@ -79,12 +107,16 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
 
   app.post('/api/admin/rooms', ...guard, async (req, res) => {
     try {
-      const { dormId, floor, code, capacity } = req.body;
-      if (!DORMS.some((d) => d.id === dormId) || !floor || !code) {
-        return res.status(400).json({ message: 'dormId, floor และ code จำเป็นต้องกรอก' });
+      const { dormId, code } = req.body;
+      const dorm = DORMS.find((d) => d.id === dormId);
+      const floor = Number(req.body.floor);
+      const capacity = req.body.capacity === undefined ? 4 : parseCapacity(req.body.capacity);
+      if (!dorm || !Number.isInteger(floor) || floor < 1 || floor > dorm.floors || !isText(code) || !clip(code, 10)) {
+        return res.status(400).json({ message: 'dormId, floor และ code ไม่ถูกต้อง' });
       }
+      if (!capacity) return res.status(400).json({ message: 'จำนวนเตียงต้องเป็น 1-10' });
       const room = await prisma.room.create({
-        data: { dormId, floor: Number(floor), code: String(code).trim().toUpperCase(), capacity: Number(capacity) || 4 },
+        data: { dormId, floor, code: clip(code, 10).toUpperCase(), capacity },
       });
       res.status(201).json(room);
     } catch (err) {
@@ -97,7 +129,10 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
     try {
       const { capacity, status } = req.body;
       const data = {};
-      if (capacity !== undefined) data.capacity = Number(capacity);
+      if (capacity !== undefined) {
+        data.capacity = parseCapacity(capacity);
+        if (!data.capacity) return res.status(400).json({ message: 'จำนวนเตียงต้องเป็น 1-10' });
+      }
       if (status !== undefined) {
         if (!ROOM_STATUSES.includes(status)) return res.status(400).json({ message: 'Invalid status' });
         data.status = status;
@@ -115,6 +150,9 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
       res.json({ message: 'Room deleted' });
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'Room not found' });
+      if (err.code === 'P2003') {
+        return res.status(400).json({ message: 'ห้องนี้มีประวัติการจอง ลบไม่ได้ — ให้เปลี่ยนสถานะเป็น CLOSED แทน' });
+      }
       fail(res, err);
     }
   });
@@ -122,22 +160,7 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
   // สร้างห้องทั้งหมดตามผังเดิม (10 ห้อง/ชั้น, รหัสแบบ A101) — ข้ามห้องที่มีอยู่แล้ว
   app.post('/api/admin/rooms/seed', ...guard, async (req, res) => {
     try {
-      const data = [];
-      DORMS.forEach((d, di) => {
-        for (let f = 1; f <= d.floors; f++) {
-          for (let i = 1; i <= 10; i++) {
-            data.push({
-              dormId: d.id, floor: f, capacity: 4,
-              code: `${String.fromCharCode(65 + di)}${f}${String(i).padStart(2, '0')}`,
-            });
-          }
-        }
-      });
-      let created = 0;
-      for (const r of data) {
-        const exists = await prisma.room.findUnique({ where: { code: r.code } });
-        if (!exists) { await prisma.room.create({ data: r }); created++; }
-      }
+      const created = await ensureRooms(prisma);
       res.json({ message: `สร้างห้องใหม่ ${created} ห้อง`, created });
     } catch (err) { fail(res, err); }
   });
@@ -157,7 +180,12 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
 
   app.post('/api/admin/bookings', ...guard, async (req, res) => {
     try {
-      const { roomId, studentName, studentCode, phone, parentName, parentPhone } = req.body;
+      const { roomId } = req.body;
+      const fields = ['studentName', 'studentCode', 'phone', 'parentName', 'parentPhone'];
+      if (fields.some((k) => req.body[k] != null && !isText(req.body[k]))) {
+        return res.status(400).json({ message: 'ข้อมูลผู้จองไม่ถูกต้อง' });
+      }
+      const [studentName, studentCode, phone, parentName, parentPhone] = fields.map((k) => clip(req.body[k], 200) || null);
       if (!roomId || !studentName) {
         return res.status(400).json({ message: 'roomId และ studentName จำเป็นต้องกรอก' });
       }
@@ -168,8 +196,8 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
       if (!room) return res.status(404).json({ message: 'Room not found' });
       if (room.status !== 'AVAILABLE') return res.status(400).json({ message: 'ห้องนี้ไม่เปิดให้จอง' });
       if (room.bookings.length >= room.capacity) return res.status(400).json({ message: 'ห้องเต็มแล้ว' });
-      const booking = await writeWithinCapacity(prisma, room.id, (tx) => tx.booking.create({
-        data: { roomId: room.id, studentName, studentCode, phone, parentName, parentPhone },
+      const booking = await writeBooking(prisma, { roomId: room.id }, (tx) => tx.booking.create({
+        data: { roomId: room.id, studentName, studentCode, phone, parentName, parentPhone, paymentAmount: REGISTRATION_FEE },
       }));
       res.status(201).json(booking);
     } catch (err) {
@@ -181,6 +209,9 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
   app.patch('/api/admin/bookings/:id', ...guard, async (req, res) => {
     try {
       const { status, paymentStatus, paymentMethod } = req.body;
+      const id = Number(req.params.id);
+      const current = await prisma.booking.findUnique({ where: { id } });
+      if (!current) return res.status(404).json({ message: 'Booking not found' });
       const data = {};
       if (status !== undefined) {
         if (!BOOKING_STATUSES.includes(status)) return res.status(400).json({ message: 'Invalid status' });
@@ -191,15 +222,20 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
         data.paymentStatus = paymentStatus;
         if (paymentStatus === 'PAID') {
           data.paidAt = new Date();
-          data.paymentMethod = paymentMethod || 'CASH';
-          data.receiptNo = receiptNoFor(Number(req.params.id), data.paidAt);
+          data.paymentMethod = PAYMENT_METHODS.includes(paymentMethod) ? paymentMethod : 'CASH';
+          data.receiptNo = receiptNoFor(id, data.paidAt);
         } else {
           data.paidAt = null; data.paymentMethod = null; data.receiptNo = null;
         }
       }
-      res.json(await prisma.booking.update({ where: { id: Number(req.params.id) }, data, include: { room: true } }));
+      const update = (tx) => tx.booking.update({ where: { id }, data, include: { room: true } });
+      // เปิดการจองที่ยกเลิกไปแล้วกลับมา → ต้องผ่านการตรวจความจุห้อง/การจองซ้ำเหมือนจองใหม่
+      const reviving = current.status === 'CANCELLED' && data.status && data.status !== 'CANCELLED';
+      res.json(reviving ? await writeBooking(prisma, { roomId: current.roomId, userId: current.userId }, update) : await update(prisma));
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'Booking not found' });
+      if (err instanceof RoomFullError) return res.status(400).json({ message: 'ห้องเต็มแล้ว เปิดการจองนี้กลับมาไม่ได้' });
+      if (err instanceof DuplicateBookingError) return res.status(400).json({ message: 'ผู้ใช้นี้มีการจองอื่นอยู่แล้ว' });
       fail(res, err);
     }
   });
@@ -292,10 +328,12 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
         data.password = await bcrypt.hash(password, 10);
         data.passwordChangedAt = new Date(); // บังคับออกจากระบบทุกเครื่องของผู้ใช้นั้น
       }
-      res.json(await prisma.user.update({
+      const user = await prisma.user.update({
         where: { id }, data,
         select: { id: true, username: true, email: true, name: true, role: true },
-      }));
+      });
+      if (data.role || data.password) kickUserSockets(id);
+      res.json(user);
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'User not found' });
       if (err.code === 'P2002') return res.status(400).json({ message: 'Email ซ้ำ' });
@@ -307,7 +345,11 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
     try {
       const id = Number(req.params.id);
       if (id === req.user.id) return res.status(400).json({ message: 'ไม่สามารถลบบัญชีตัวเองได้' });
-      await prisma.user.delete({ where: { id } });
+      await prisma.$transaction([
+        prisma.booking.updateMany({ where: { userId: id, status: { not: 'CANCELLED' } }, data: { status: 'CANCELLED' } }),
+        prisma.user.delete({ where: { id } }),
+      ]);
+      kickUserSockets(id);
       res.json({ message: 'User deleted' });
     } catch (err) {
       if (err.code === 'P2025') return res.status(404).json({ message: 'User not found' });
@@ -317,3 +359,4 @@ module.exports = function registerAdminRoutes({ app, prisma, authenticateToken, 
 };
 
 module.exports.DORMS = DORMS;
+module.exports.ensureRooms = ensureRooms;

@@ -119,6 +119,13 @@ function parseProfile(body) {
   };
 }
 
+// ความยาวสูงสุดของแต่ละช่อง (นับตัวอักษรจริง) — กันข้อความยาวผิดปกติเต็มฐานข้อมูล
+const LONG_FIELDS = new Set(['address', 'emergencyAddress', 'emergency2Address']);
+function tooLongField(data) {
+  return Object.entries(data).find(([key, v]) =>
+    typeof v === 'string' && Array.from(v).length > (LONG_FIELDS.has(key) ? 500 : 200))?.[0];
+}
+
 module.exports = function registerProfileRoutes({ app, prisma, authenticateToken, serverError: fail }) {
 
   const findProfile = (userId) => prisma.tenantProfile.findUnique({ where: { userId } });
@@ -133,6 +140,18 @@ module.exports = function registerProfileRoutes({ app, prisma, authenticateToken
     try {
       const { data, error } = parseProfile(req.body || {});
       if (error) return res.status(400).json({ message: error });
+      if (tooLongField(data)) {
+        return res.status(400).json({ message: 'ข้อมูลบางช่องยาวเกินไป (ที่อยู่ไม่เกิน 500 ตัวอักษร ช่องอื่นไม่เกิน 200)' });
+      }
+
+      // จองห้องไว้แล้ว → เปลี่ยนเพศจนไม่ตรงกับอาคารที่จองไม่ได้ (ต้องให้แอดมินยกเลิกการจองก่อน)
+      const booking = await prisma.booking.findFirst({
+        where: { userId: req.user.id, status: { not: 'CANCELLED' } },
+        include: { room: true },
+      });
+      if (booking && !DORMS_BY_GENDER[data.gender].includes(booking.room.dormId)) {
+        return res.status(400).json({ message: `คุณจองห้อง ${booking.room.code} ไว้แล้ว จึงเปลี่ยนเพศ/อาคารที่ไม่ตรงกับห้องนี้ไม่ได้` });
+      }
 
       const existing = await findProfile(req.user.id);
       const { isOpen } = getRegistrationPeriod();

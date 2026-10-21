@@ -1,123 +1,78 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useAuth } from './AuthContext'
+import api from '../studentApi'
 
 const RegistrationContext = createContext(null)
-// ความคืบหน้าการลงทะเบียนเก็บแยกตามผู้ใช้: taothong.registration.<username>
-const STORAGE_PREFIX = 'taothong.registration'
 
-const emptyPerson = { prefix: '', firstName: '', lastName: '', phone: '' }
+// ค่าลงทะเบียนสำรอง (ค่าจริงมาจาก backend: booking.paymentAmount / GET /api/registration-period)
+export const FALLBACK_FEE = 1999
 
-const initialState = {
-  student: { ...emptyPerson, citizenId: '' },
-  father: { ...emptyPerson },
-  mother: { ...emptyPerson },
-  infoCompleted: false,
-  booking: {
-    dormId: null,
-    floor: null,
-    roomId: null,
-    confirmed: false,
-  },
-  payment: {
-    status: 'unpaid', // unpaid | paid
-    amount: 1999,
-    method: null,
-    paidAt: null,
-    receiptNo: null,
-  },
-  review: {
-    submitted: false,
-    rating: null,
-    comment: '',
-  },
-}
-
-function load(key) {
+// เวอร์ชันเก่าเก็บความคืบหน้า (รวมเลขบัตรประชาชน) ไว้ใน localStorage — ลบทิ้ง ไม่ให้ค้างในเครื่องสาธารณะ
+const LEGACY_PREFIX = 'taothong.registration'
+function clearLegacyStorage() {
   try {
-    const saved = localStorage.getItem(key)
-    return saved ? { ...initialState, ...JSON.parse(saved) } : initialState
+    Object.keys(localStorage).filter((k) => k.startsWith(LEGACY_PREFIX)).forEach((k) => localStorage.removeItem(k))
   } catch {
-    return initialState
+    // ignore
   }
 }
 
+const EMPTY = { loading: true, profile: null, booking: null, review: null }
+
+// สถานะการลงทะเบียนของผู้เช่ามาจาก backend เสมอ (โปรไฟล์ / การจอง / การชำระเงิน / รีวิว)
+// → เปลี่ยนเครื่องหรือแอดมินแก้สถานะ ก็เห็นตรงกัน; เรียก refresh() หลังทำรายการที่เปลี่ยนข้อมูล
 export function RegistrationProvider({ children }) {
-  const { user } = useAuth()
-  const storageKey = `${STORAGE_PREFIX}.${user?.identifier ?? 'guest'}`
-
-  const [state, setState] = useState(() => load(storageKey))
-  const [activeKey, setActiveKey] = useState(storageKey)
-
-  // เปลี่ยนบัญชี (ล็อกอิน/ออกจากระบบ/สลับผู้ใช้) → โหลดข้อมูลของบัญชีนั้น ไม่ใช่ของคนก่อนหน้า
-  if (activeKey !== storageKey) {
-    setActiveKey(storageKey)
-    setState(load(storageKey))
-  }
+  const { isAuthenticated, user } = useAuth()
+  const [data, setData] = useState(EMPTY)
+  const [fee, setFee] = useState(FALLBACK_FEE)
 
   useEffect(() => {
-    localStorage.setItem(activeKey, JSON.stringify(state))
-  }, [state, activeKey])
+    clearLegacyStorage()
+    api.get('/api/registration-period').then(({ data: p }) => p?.fee && setFee(p.fee)).catch(() => {})
+  }, [])
 
-  function updatePerson(role, data) {
-    setState((s) => ({ ...s, [role]: { ...s[role], ...data } }))
+  const refresh = useCallback(async () => {
+    if (!isAuthenticated) {
+      setData({ ...EMPTY, loading: false })
+      return
+    }
+    const get = (path) => api.get(path).then((r) => r.data).catch(() => null)
+    const [profile, booking, review] = await Promise.all([get('/api/profile'), get('/api/bookings/me'), get('/api/reviews/me')])
+    setData({ loading: false, profile, booking, review })
+  }, [isAuthenticated, user?.username]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setData(EMPTY)
+    refresh()
+  }, [refresh])
+
+  const { loading, profile, booking: b, review: r } = data
+  const value = {
+    loading,
+    refresh,
+    profile,
+    infoCompleted: !!profile,
+    student: profile
+      ? { prefix: profile.prefix, firstName: profile.firstName, lastName: profile.lastName, phone: profile.mobile }
+      : { prefix: '', firstName: '', lastName: '', phone: '' },
+    booking: {
+      id: b?.id ?? null,
+      confirmed: !!b,
+      dormId: b?.room?.dormId ?? null,
+      floor: b?.room?.floor ?? null,
+      roomCode: b?.room?.code ?? null,
+    },
+    payment: {
+      status: b?.paymentStatus === 'PAID' ? 'paid' : 'unpaid',
+      amount: b?.paymentAmount ?? fee,
+      method: b?.paymentMethod ? b.paymentMethod.toLowerCase() : null,
+      paidAt: b?.paidAt ?? null,
+      receiptNo: b?.paymentStatus === 'PAID' ? b.receiptNo : null,
+    },
+    review: { submitted: !!r, rating: r?.rating ?? null, comment: r?.comment ?? '' },
   }
 
-  function markInfoCompleted() {
-    setState((s) => ({ ...s, infoCompleted: true }))
-  }
-
-  function selectRoom({ dormId, floor, roomId }) {
-    setState((s) => ({
-      ...s,
-      booking: { ...s.booking, dormId, floor, roomId, confirmed: false },
-    }))
-  }
-
-  function confirmBooking() {
-    setState((s) => ({ ...s, booking: { ...s.booking, confirmed: true } }))
-  }
-
-  // รับเลขใบเสร็จ/เวลาจาก server (ถ้าไม่ส่งมา จะสร้างเองในเครื่องแบบเดิม)
-  function completePayment(
-    method,
-    receiptNo = 'RCPT-' + Date.now().toString().slice(-8),
-    paidAt = new Date().toISOString(),
-  ) {
-    setState((s) => ({
-      ...s,
-      payment: { ...s.payment, status: 'paid', method, paidAt, receiptNo },
-    }))
-    return receiptNo
-  }
-
-  function submitReview({ rating, comment }) {
-    setState((s) => ({
-      ...s,
-      review: { submitted: true, rating, comment },
-    }))
-  }
-
-  function resetAll() {
-    localStorage.removeItem(activeKey)
-    setState(initialState)
-  }
-
-  return (
-    <RegistrationContext.Provider
-      value={{
-        ...state,
-        updatePerson,
-        markInfoCompleted,
-        selectRoom,
-        confirmBooking,
-        completePayment,
-        submitReview,
-        resetAll,
-      }}
-    >
-      {children}
-    </RegistrationContext.Provider>
-  )
+  return <RegistrationContext.Provider value={value}>{children}</RegistrationContext.Provider>
 }
 
 export function useRegistration() {

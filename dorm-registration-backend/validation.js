@@ -29,4 +29,12 @@ function nameError(name) {
   return typeof name === 'string' && name.length <= NAME_MAX ? null : `ชื่อยาวได้ไม่เกิน ${NAME_MAX} ตัวอักษร`;
 }
 
-module.exports = { passwordError, emailError, usernameError, nameError };
+// ตัดข้อความตามจำนวนตัวอักษรจริง (code point) — String.slice ตัดกลาง emoji แล้ว Prisma บันทึกไม่ได้ (500)
+function clip(value, max) {
+  return Array.from(String(value ?? '').trim()).slice(0, max).join('');
+}
+
+// ค่าจาก body ต้องเป็นข้อความ (กัน object/array ที่ทำให้ Prisma error หรือบันทึกเป็น "[object Object]")
+const isText = (v) => typeof v === 'string' || typeof v === 'number';
+
+module.exports = { passwordError, emailError, usernameError, nameError, clip, isText };

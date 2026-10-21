@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { BedDouble, Check, CreditCard, House, LayoutDashboard, Star, Wrench, X } from 'lucide-react'
+import { BedDouble, Check, CreditCard, House, LayoutDashboard, ReceiptText, Star, Wrench, X } from 'lucide-react'
 import { useRegistration } from '../../context/RegistrationContext'
 
 const linkBase = 'flex items-center gap-3 px-4 py-2.5 rounded-full text-sm transition'
@@ -9,12 +9,15 @@ const linkClass = (locked) => ({ isActive }) =>
   `${linkBase} ${isActive ? linkActive : linkInactive} ${locked ? 'opacity-40 pointer-events-none' : ''}`
 
 export default function Sidebar({ open, onClose }) {
-  const { infoCompleted, booking, payment } = useRegistration()
+  const { infoCompleted, booking, payment, review } = useRegistration()
+  const paid = payment.status === 'paid'
 
+  // สถานะทั้งหมดมาจาก server (หน้าแต่ละหน้าตรวจซ้ำอีกชั้น เผื่อเข้าทาง URL ตรง)
   const flow = [
     { to: '/app/rooms', label: 'เลือกห้องพัก', Icon: BedDouble, done: booking.confirmed, locked: !infoCompleted },
-    { to: '/app/payment', label: 'ชำระเงิน', Icon: CreditCard, done: payment.status === 'paid', locked: !booking.confirmed },
-    { to: '/app/review', label: 'รีวิว / ข้อเสนอแนะ', Icon: Star, done: false, locked: payment.status !== 'paid' },
+    { to: '/app/payment', label: 'ชำระเงิน', Icon: CreditCard, done: paid, locked: !booking.confirmed },
+    { to: '/app/receipt', label: 'ใบเสร็จรับเงิน', Icon: ReceiptText, done: false, locked: !paid },
+    { to: '/app/review', label: 'รีวิว / ข้อเสนอแนะ', Icon: Star, done: review.submitted, locked: !paid },
   ]
 
   return (

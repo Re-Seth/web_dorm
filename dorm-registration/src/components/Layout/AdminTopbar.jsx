@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Wrench } from 'lucide-react'
+import { Bell, Menu, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useMaintenanceAlerts } from '../../hooks/useMaintenanceAlerts'
 
@@ -124,7 +124,7 @@ function MaintenanceBell() {
 }
 
 // แถบด้านบนของผู้จัดการหอพัก (มีกระดิ่งแจ้งซ่อม Real-time) — มาจากโปรเจกต์ kit
-export default function AdminTopbar() {
+export default function AdminTopbar({ onMenu }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -137,8 +137,11 @@ export default function AdminTopbar() {
   const isAdmin = user?.role === 'ADMIN'
 
   return (
-    <header className="h-16 border-b border-charcoal-line flex items-center justify-between px-6 shrink-0">
-      <div>
+    <header className="h-16 border-b border-charcoal-line flex items-center justify-between gap-3 px-4 sm:px-6 shrink-0">
+      <button onClick={onMenu} className="lg:hidden p-2 -ml-1 rounded-lg text-slate-300 hover:bg-slate-800" aria-label="เปิดเมนู">
+        <Menu className="w-5 h-5" />
+      </button>
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-bone/50">ยินดีต้อนรับ</p>
         <div className="flex items-center gap-2">
           <p className="font-display font-medium text-gold">{displayName}</p>

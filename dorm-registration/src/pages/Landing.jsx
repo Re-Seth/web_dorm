@@ -8,6 +8,7 @@ import DormMap from '../components/landing/DormMap'
 import LoginCard from '../components/landing/LoginCard'
 import SiteHeader from '../components/landing/SiteHeader'
 import { BUILDINGS, GENDER_LABEL, ROOM_FILTERS } from '../data/landing'
+import useRegistrationPeriod from '../hooks/useRegistrationPeriod'
 
 const AMENITIES = [
   { icon: Wifi, title: 'Wi-Fi ความเร็วสูง', text: 'ไฟเบอร์ออพติกทุกห้องพัก' },
@@ -61,6 +62,12 @@ export default function Landing() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
   const [activePin, setActivePin] = useState(null)
+  const reg = useRegistrationPeriod()
+  const regBadge = {
+    OPEN: [`เปิดรับลงทะเบียนผู้เช่า${reg.period?.term ? ` ${reg.period.term}` : ''}`, 'bg-japandi-terracotta animate-pulse'],
+    UPCOMING: ['เร็ว ๆ นี้: เปิดรับลงทะเบียนผู้เช่ารอบใหม่', 'bg-amber-500'],
+    CLOSED: ['ปิดรับลงทะเบียนรอบนี้แล้ว — ติดตามรอบถัดไป', 'bg-japandi-muted'],
+  }[reg.status]
 
   const openApply = (dormId) => navigate(dormId ? `/apply?dorm=${dormId}` : '/apply')
   const visibleBuildings = BUILDINGS.filter((b) => filter === 'all' || b.roomTypes.includes(filter))
@@ -74,10 +81,12 @@ export default function Landing() {
         <section id="about" className="py-12 md:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-japandi-sand text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-japandi-terracotta animate-pulse" />
-                เปิดรับลงทะเบียนผู้เช่าประจำปีการศึกษาใหม่
-              </div>
+              {regBadge && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-japandi-sand text-xs font-medium">
+                  <span className={`w-2 h-2 rounded-full ${regBadge[1]}`} />
+                  {regBadge[0]}
+                </div>
+              )}
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
                 สัมผัสชีวิตสมดุลในสไตล์ <span className="text-japandi-terracotta font-normal italic">Japandi</span>
                 <br />ณ หอพักเทาทอง

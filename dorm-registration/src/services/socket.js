@@ -4,7 +4,10 @@ import { getToken } from '../studentApi';
 
 // ใช้ Socket.io connection เดียวร่วมกันทั้งแอป
 // แนบ token ตอนเชื่อมต่อ — backend ส่งการแจ้งเตือนแจ้งซ่อมให้เฉพาะผู้จัดการหอพักและผู้แจ้ง
-const socket = io(API_BASE_URL, {
+// API_BASE_URL แบบ path (เช่น '/_api' หลัง nginx) → ต่อกับ origin เดิม และใช้ path ของ socket.io ใต้ prefix นั้น
+const isPathBase = API_BASE_URL.startsWith('/')
+const socket = io(isPathBase ? window.location.origin : API_BASE_URL, {
+  ...(isPathBase ? { path: `${API_BASE_URL}/socket.io` } : {}),
   auth: (cb) => cb({ token: getToken() }),
 });
 
