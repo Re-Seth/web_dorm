@@ -27,7 +27,7 @@
 
 ### 🔑 การเข้าใช้งานเพื่อทดสอบ
 
-**ปุ่มบัญชีทดลอง (แนะนำสำหรับเว็บทดสอบ)** — ตั้ง `DEMO_LOGIN=true` ใน `.env` ของ backend แล้วหน้า login จะมีปุ่ม **ผู้เช่า** และ **ผู้จัดการหอ (Admin)** กดแล้วเข้าระบบได้ทันที (ระบบสร้างบัญชี `demo-user@demo.local` / `demo-admin@demo.local` ให้เอง โดยใช้รหัสผ่านสุ่ม)
+**ปุ่มบัญชีทดลอง (แนะนำสำหรับเว็บทดสอบ)** — ตั้ง `DEMO_LOGIN=true` ใน `.env` ของ backend (หรือ `.env` ที่โฟลเดอร์หลักถ้าใช้ Docker) แล้วหน้า login จะมีปุ่ม **ผู้เช่า** และ **ผู้จัดการหอ (Admin)** กดแล้วเข้าระบบได้ทันที (ระบบสร้างบัญชี `demo-user@demo.local` / `demo-admin@demo.local` ให้เอง โดยใช้รหัสผ่านสุ่ม และบัญชีผู้เช่าทดลองมีโปรไฟล์ตัวอย่างให้ จึงทดสอบเลือกห้อง/ชำระเงิน/แจ้งซ่อมได้ทันที)
 
 > ⚠️ **ห้ามเปิด `DEMO_LOGIN` บนระบบจริง** — ใครก็กดเข้าเป็น Admin ได้
 
@@ -36,9 +36,14 @@
 ```bash
 cd dorm-registration-backend
 npm run seed
+
+# ถ้าใช้ Docker: ตั้ง ADMIN_PASSWORD ใน .env ที่โฟลเดอร์หลัก แล้วรัน
+docker exec dorm_backend node prisma/seed.js
 ```
 
-**ผู้เช่า** — สมัครใหม่ได้ที่หน้า `/apply` (รหัสผ่านอย่างน้อย 8 ตัวอักษร ต้องอยู่ในช่วงเปิดรับลงทะเบียน)
+**ผู้เช่า** — สมัครใหม่ได้ที่หน้า `/apply` (รหัสผ่านอย่างน้อย 8 ตัวอักษร ต้องอยู่ในช่วงเปิดรับลงทะเบียน — ค่าเริ่มต้นเปิดถึง 31 มี.ค. 2027 เปลี่ยนได้ด้วย `REG_CLOSE_AT`)
+
+**กฎการจองห้อง** — ต้องอยู่ในรอบเปิดลงทะเบียน, ต้องกรอกข้อมูลผู้เช่าก่อน, อาคารต้องตรงกับเพศ (ชาย → เทาทอง 1 / หญิง → เทาทอง 2–4), 1 คนมีการจองที่ยังไม่ยกเลิกได้ 1 รายการ, ห้องละ 4 เตียง, ค่าลงทะเบียน 1,999 บาท (`REGISTRATION_FEE`)
 
 ---
 
@@ -101,7 +106,12 @@ web_dorm/
 อยู่ในโฟลเดอร์หลัก `web_dorm/` เลือกวิธีใดวิธีหนึ่ง:
 
 #### รันผ่าน Docker (ไม่ต้องลง Node.js ในเครื่อง)
-- **ดับเบิลคลิก:** [`docker-start.bat`](./docker-start.bat) — ครั้งแรกจะสร้างไฟล์ `.env` ที่โฟลเดอร์หลักพร้อม `JWT_SECRET` แบบสุ่มให้อัตโนมัติ
+- **ดับเบิลคลิก:** [`docker-start.bat`](./docker-start.bat) (ถ้าโหลดเป็น ZIP ให้ **Extract All** ก่อน) — สคริปต์จะ:
+  - เปิด Docker Desktop ให้และรอจนพร้อม, ตรวจโหมด Linux containers
+  - สร้างไฟล์ `.env` ที่โฟลเดอร์หลักพร้อม `JWT_SECRET` แบบสุ่มให้อัตโนมัติ
+  - ถามก่อนหยุดโปรแกรม/container อื่นที่ใช้พอร์ต 5000 หรือ 8080
+  - สำรองฐานข้อมูลเดิมไว้ที่โฟลเดอร์ `backups\` (เก็บล่าสุด 5 ชุด) ก่อนอัปเดต
+  - รอจน backend พร้อมแล้วเปิดเบราว์เซอร์ และแสดงลิงก์สำหรับเครื่องอื่นในวง LAN
 - **Terminal:** ต้องมีไฟล์ `.env` ที่โฟลเดอร์หลักที่ตั้ง `JWT_SECRET` ไว้ก่อน แล้วรัน:
   ```bash
   docker compose up -d --build
@@ -144,6 +154,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 | `DATABASE_URL` | ✅ | ที่อยู่ไฟล์ SQLite เช่น `file:./dev.db` |
 | `JWT_SECRET` | ✅ | คีย์ลับสำหรับเซ็น token (≥ 16 ตัวอักษร ห้าม commit) |
 | `CORS_ORIGIN` | | origin ของ frontend ที่อนุญาต คั่นด้วย `,` (ค่าเริ่มต้น `http://localhost:5173,http://localhost:8080`) |
+| `REGISTRATION_FEE` | | ค่าลงทะเบียน (บาท) ค่าเริ่มต้น 1999 |
+| `TRUST_PROXY` | | จำนวน reverse proxy ข้างหน้า (Docker ตั้งเป็น 1 ให้แล้ว) — ใช้ IP จริงของผู้ใช้ในการจำกัดความถี่ |
 | `DEMO_LOGIN` | | `true` = แสดงปุ่มบัญชีทดลองบนหน้า login (เฉพาะเว็บทดสอบ) |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | | ใช้กับ `npm run seed` เพื่อสร้างบัญชี Admin |
 | `REG_TERM` / `REG_OPEN_AT` / `REG_CLOSE_AT` | | ภาคเรียนและช่วงเปิดรับลงทะเบียน (ISO 8601 พร้อมเขตเวลา) |
@@ -151,7 +163,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 สร้างตารางในฐานข้อมูล แล้วรันเซิร์ฟเวอร์:
 
 ```bash
-npx prisma db push   # สร้าง/อัปเดตตารางตาม schema (ทำครั้งแรก และทุกครั้งที่ schema เปลี่ยน)
+node prisma/prepare-db.js   # เก็บกวาดข้อมูลเก่าที่ขัดกับ schema (เช่น ข้อมูลของผู้ใช้ที่ถูกลบ)
+npx prisma db push          # สร้าง/อัปเดตตารางตาม schema (ทำครั้งแรก และทุกครั้งที่ schema เปลี่ยน)
 npm run dev          # โหมดพัฒนา (node --watch)
 # หรือ
 npm start            # โหมด production
@@ -201,9 +214,10 @@ npm run dev
 | POST | `/api/bookings` | จอง/เปลี่ยนห้องพัก 🔒 |
 | GET | `/api/bookings/me` | การจองของผู้ใช้ปัจจุบัน 🔒 |
 | POST | `/api/bookings/pay` | ชำระเงิน (จำลอง) และออกใบเสร็จ 🔒 |
-| POST | `/api/reviews` | ส่งคะแนนและข้อเสนอแนะ 🔒 |
+| POST | `/api/reviews` | ส่งหรือแก้ไขคะแนนและข้อเสนอแนะ 🔒 |
+| GET | `/api/reviews/me` | รีวิวของตัวเอง 🔒 |
 | GET | `/api/maintenance` | รายการแจ้งซ่อม — ผู้เช่าเห็นเฉพาะของตัวเอง Admin เห็นทั้งหมด 🔒 |
-| POST | `/api/maintenance` | แจ้งซ่อมใหม่ 🔒 |
+| POST | `/api/maintenance` | แจ้งซ่อมห้องที่ตัวเองจองไว้ (ห้องมาจากการจอง ไม่รับจาก client) 🔒 |
 | PATCH | `/api/maintenance/:id/status` | อัปเดตสถานะการแจ้งซ่อม 🔒👑 |
 
 **ผู้จัดการหอพัก (ทุก endpoint ต้องเป็น Admin 🔒👑)**
@@ -221,7 +235,7 @@ npm run dev
 | | `/api/admin/rooms`, `/api/admin/bookings`, `/api/admin/maintenance`, `/api/admin/users/:id` | CRUD ห้อง การจอง งานแจ้งซ่อม และผู้ใช้ |
 
 **Real-time (Socket.io)**
-- `power_update` — ข้อมูลการใช้ไฟฟ้าทุก 3 วินาที (ส่งให้ทุกคน)
+- `power_update` — ข้อมูลการใช้ไฟฟ้าทุก 3 วินาที (ส่งให้ทุกคน, `timestamp` เป็น ISO)
 - `maintenance_created` / `maintenance_updated` — ส่งเฉพาะ Admin และผู้แจ้งรายการนั้น (client ต้องแนบ token ใน `auth.token` ตอนเชื่อมต่อ)
 
 ---
@@ -231,7 +245,9 @@ npm run dev
 - **ห้าม commit** ไฟล์ `.env` และไฟล์ฐานข้อมูล `*.db` (มีข้อมูลส่วนบุคคล — อยู่ใน `.gitignore` แล้ว)
 - ทุก request โหลด role ล่าสุดจากฐานข้อมูล ลดสิทธิ์หรือลบบัญชีแล้วมีผลทันที
 - จำกัดการเข้าสู่ระบบผิด 10 ครั้ง / 15 นาที ต่อ IP + บัญชี
-- การจองห้องทำใน transaction กันจองเกินความจุเมื่อมีหลายคนกดพร้อมกัน
+- การจองห้องทำใน transaction กันจองเกินความจุ และกันผู้ใช้คนเดียวจองซ้อน เมื่อมีหลายคำขอเข้ามาพร้อมกัน
+- ลบบัญชี → ลบโปรไฟล์/รีวิว/แจ้งซ่อม และยกเลิกการจอง (คืนเตียง) อัตโนมัติ; ห้องที่มีประวัติการจองลบไม่ได้ (ให้ปิดด้วยสถานะ CLOSED)
+- สถานะการจอง/ชำระเงินของผู้เช่าโหลดจาก server ทุกครั้ง (ไม่เก็บข้อมูลส่วนตัวไว้ใน localStorage)
 - การชำระเงินยังเป็นแบบจำลอง — ก่อนใช้งานจริงควรเปลี่ยนเป็นแนบสลิปให้ Admin ยืนยัน
 
 ---
@@ -261,10 +277,12 @@ docker compose down
 
 | Service | Container Name | Port (โฮสต์) | รายละเอียด |
 |---|---|---|---|
-| **Backend** | `dorm_backend` | `http://localhost:5000` | Node.js 20 + Express + Prisma (SQLite) + Socket.io — รัน `prisma db push` ทุกครั้งที่เริ่ม |
-| **Frontend** | `dorm_frontend` | `http://localhost:8080` | Build ด้วย Vite แล้วเสิร์ฟด้วย Nginx |
+| **Backend** | `dorm_backend` | `http://localhost:5000` (เฉพาะเครื่องนี้) | Node.js 22 + Express + Prisma (SQLite, WAL) + Socket.io — เริ่มทุกครั้งจะเก็บกวาดข้อมูลแล้ว `prisma db push`, มี healthcheck |
+| **Frontend** | `dorm_frontend` | `http://<IP เครื่อง>:8080` | Build ด้วย Vite แล้วเสิร์ฟด้วย Nginx — ส่งต่อ `/_api/*` และ Socket.io ไปที่ backend จึงเปิดจากเครื่องอื่นในวง LAN ได้ |
 
-> 💾 ฐานข้อมูล SQLite ของ Docker เก็บใน volume `dbdata` (`/data/dev.db` ในคอนเทนเนอร์) แยกจากฐานข้อมูลที่ใช้ตอนรันแบบไม่ใช้ Docker — ข้อมูลไม่หายเมื่อหยุดคอนเทนเนอร์ (ยกเว้นสั่ง `docker compose down -v`)
+> 💾 ฐานข้อมูล SQLite ของ Docker เก็บใน volume `web_dorm_dbdata` (`/data/dev.db` ในคอนเทนเนอร์) แยกจากฐานข้อมูลที่ใช้ตอนรันแบบไม่ใช้ Docker — ข้อมูลไม่หายเมื่อหยุดคอนเทนเนอร์ (ยกเว้นสั่ง `docker compose down -v`) และชื่อโปรเจกต์ตายตัว (`name: web_dorm`) จึงใช้ข้อมูลชุดเดิมแม้ย้าย/เปลี่ยนชื่อโฟลเดอร์
+>
+> สำรองข้อมูลเอง: `docker exec dorm_backend node prisma/backup.js /data/backup-latest.db` แล้ว `docker cp dorm_backend:/data/backup-latest.db backups\` (docker-start.bat ทำให้อัตโนมัติก่อนอัปเดต)
 
 ---
 
