@@ -26,7 +26,13 @@ app.disable('x-powered-by');
 // ตั้ง TRUST_PROXY = จำนวน proxy ที่อยู่ข้างหน้า (ไม่ได้ตั้ง = ไม่เชื่อ header นี้)
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 const server = http.createServer(app); // ใช้ร่วมกับ Socket.io
-const prisma = new PrismaClient();
+// SQLite เขียนได้ทีละ 1 รายการ — ถ้า Prisma เปิดหลาย connection คำขอที่เขียนพร้อมกันจะแย่ง lock จน timeout (P1008)
+// ใช้ connection เดียวให้คำขอเข้าคิวแทน (แต่ละคำขอใช้เวลาไม่กี่ ms) — ตั้งเองใน DATABASE_URL ได้ถ้าต้องการค่าอื่น
+function sqliteUrl(url) {
+  if (!url?.startsWith('file:') || /[?&]connection_limit=/.test(url)) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}connection_limit=1`;
+}
+const prisma = new PrismaClient({ datasources: { db: { url: sqliteUrl(process.env.DATABASE_URL) } } });
 
 // ตั้งค่า Socket.io สำหรับ Real-time
 const io = new Server(server, {
