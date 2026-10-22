@@ -12,7 +12,8 @@ services:
       # ต้องตั้งในไฟล์ .env ข้าง docker-compose.yml (docker-start.bat สร้างค่าสุ่มให้อัตโนมัติ)
       JWT_SECRET: ${JWT_SECRET:?กรุณาตั้ง JWT_SECRET ในไฟล์ .env}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      TRUST_PROXY: 1 # เข้าผ่าน nginx (frontend) → rate limit ใช้ IP จริงของผู้ใช้
+      # จำนวน proxy หน้า backend: Cloudflare Tunnel/docker → nginx = 2 → rate limit ใช้ IP จริงของผู้ใช้
+      TRUST_PROXY: ${TRUST_PROXY:-2}
       DEMO_LOGIN: ${DEMO_LOGIN:-false} # true = แสดงปุ่มบัญชีทดลองบนหน้า login
       REG_TERM: ${REG_TERM:-}
       REG_OPEN_AT: ${REG_OPEN_AT:-}

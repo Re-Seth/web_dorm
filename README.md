@@ -155,7 +155,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 | `JWT_SECRET` | ✅ | คีย์ลับสำหรับเซ็น token (≥ 16 ตัวอักษร ห้าม commit) |
 | `CORS_ORIGIN` | | origin ของ frontend ที่อนุญาต คั่นด้วย `,` (ค่าเริ่มต้น `http://localhost:5173,http://localhost:8080`) |
 | `REGISTRATION_FEE` | | ค่าลงทะเบียน (บาท) ค่าเริ่มต้น 1999 |
-| `TRUST_PROXY` | | จำนวน reverse proxy ข้างหน้า (Docker ตั้งเป็น 1 ให้แล้ว) — ใช้ IP จริงของผู้ใช้ในการจำกัดความถี่ |
+| `TRUST_PROXY` | | จำนวน reverse proxy ข้างหน้า (Docker ค่าเริ่มต้น 2 = Cloudflare Tunnel/Docker → nginx) — ใช้ IP จริงของผู้ใช้ในการจำกัดความถี่ |
 | `DEMO_LOGIN` | | `true` = แสดงปุ่มบัญชีทดลองบนหน้า login (เฉพาะเว็บทดสอบ) |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | | ใช้กับ `npm run seed` เพื่อสร้างบัญชี Admin |
 | `REG_TERM` / `REG_OPEN_AT` / `REG_CLOSE_AT` | | ภาคเรียนและช่วงเปิดรับลงทะเบียน (ISO 8601 พร้อมเขตเวลา) |
