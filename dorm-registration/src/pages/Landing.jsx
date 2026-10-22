@@ -5,6 +5,7 @@ import {
   Shirt, ShieldCheck, SquareParking, Venus, Wifi,
 } from 'lucide-react'
 import DormMap from '../components/landing/DormMap'
+import Room3DSection from '../components/landing/Room3DSection'
 import LoginCard from '../components/landing/LoginCard'
 import SiteHeader from '../components/landing/SiteHeader'
 import { BUILDINGS, GENDER_LABEL, ROOM_FILTERS } from '../data/landing'
@@ -207,6 +208,9 @@ export default function Landing() {
             )}
           </div>
         </Reveal>
+
+        {/* 2.5 ห้องพักตัวอย่าง 3 มิติ (หมุนตามการเลื่อนหน้า) */}
+        <Room3DSection />
 
         {/* 3. AMENITIES */}
         <Reveal id="amenities" className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">

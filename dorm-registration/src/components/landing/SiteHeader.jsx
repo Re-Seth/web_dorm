@@ -19,6 +19,7 @@ export function Brand({ compact = false }) {
 const NAV = [
   ['#about', 'เกี่ยวกับโครงการ'],
   ['#buildings', 'อาคารและห้องพัก'],
+  ['#room3d', 'ห้องตัวอย่าง 3D'],
   ['#amenities', 'สิ่งอำนวยความสะดวก'],
   ['#location', 'แผนที่ตำแหน่ง'],
 ]
