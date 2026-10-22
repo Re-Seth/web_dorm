@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AuthPage from './pages/AuthPage'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
@@ -14,9 +15,19 @@ import AdminRoute from './components/AdminRoute'
 import AdminDashboard from './pages/Admin/AdminDashboard' // ระบบผู้จัดการหอพัก (จากโปรเจกต์ kit)
 import ChatWidget from './components/chat/ChatWidget' // แชทบอท + คุยกับเจ้าหน้าที่ (ทุกหน้า)
 
+// เปลี่ยนหน้า → เริ่มที่ด้านบนสุดทันที (ยกเว้นลิงก์ #section ที่ให้เลื่อนไปหาเอง)
+function ScrollToTop() {
+  const { pathname, hash } = useLocation()
+  useEffect(() => {
+    if (!hash) window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
 export default function App() {
   return (
     <>
+    <ScrollToTop />
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<AuthPage />} />

@@ -69,11 +69,17 @@ export default function Landing() {
     CLOSED: ['ปิดรับลงทะเบียนรอบนี้แล้ว — ติดตามรอบถัดไป', 'bg-japandi-muted'],
   }[reg.status]
 
-  const openApply = (dormId) => navigate(dormId ? `/apply?dorm=${dormId}` : '/apply')
+  // ไปหน้าลงทะเบียนแบบค่อย ๆ จางออก (หน้าใหม่ค่อย ๆ จางเข้าเอง) แทนการเปลี่ยนหน้าทันที
+  const [leaving, setLeaving] = useState(false)
+  const openApply = (dormId) => {
+    if (leaving) return
+    setLeaving(true)
+    setTimeout(() => navigate(dormId ? `/apply?dorm=${dormId}` : '/apply'), 250)
+  }
   const visibleBuildings = BUILDINGS.filter((b) => filter === 'all' || b.roomTypes.includes(filter))
 
   return (
-    <div className="theme-japandi min-h-screen flex flex-col bg-japandi-bg text-japandi-oak font-body selection:bg-japandi-terracotta selection:text-white">
+    <div className={`theme-japandi min-h-screen flex flex-col bg-japandi-bg text-japandi-oak font-body selection:bg-japandi-terracotta selection:text-white transition-opacity duration-300 ${leaving ? 'opacity-0' : 'animate-page-in'}`}>
       <SiteHeader showNav />
 
       <main id="top" className="flex-grow">

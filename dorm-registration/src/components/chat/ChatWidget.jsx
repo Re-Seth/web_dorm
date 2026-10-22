@@ -18,6 +18,21 @@ const timeOf = (iso) => new Date(iso).toLocaleTimeString('th-TH', { hour: '2-dig
 let nextId = 1
 const botId = () => `b${nextId++}`
 
+// เวลาที่บอท "กำลังพิมพ์" ก่อนตอบ — ข้อความยาวพิมพ์นานขึ้นนิดหน่อย (0.7–1.6 วินาที)
+const typingDelay = (text = '') => Math.min(1600, 700 + text.length * 4)
+
+function TypingBubble() {
+  return (
+    <div className="flex justify-start animate-rise-in" aria-label="ผู้ช่วยกำลังพิมพ์">
+      <div className="bg-white border border-japandi-sand rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+        {[0, 150, 300].map((delay) => (
+          <span key={delay} className="w-2 h-2 rounded-full bg-japandi-muted animate-typing-dot" style={{ animationDelay: `${delay}ms` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ปุ่มแชทลอยมุมขวาล่าง: แชทบอทตอบคำถามที่พบบ่อย (ทุกคนใช้ได้) + คุยกับเจ้าหน้าที่ (ต้องเข้าสู่ระบบ)
 // ผู้จัดการหอพักตอบแชทที่แท็บ "แชทนิสิต" ในหน้า Admin จึงไม่แสดงปุ่มนี้
 export default function ChatWidget() {
@@ -36,6 +51,9 @@ export default function ChatWidget() {
   const [lastUnmatched, setLastUnmatched] = useState('')
   const [handoffDraft, setHandoffDraft] = useState(null) // null = ไม่ได้เปิดฟอร์มส่งเรื่อง
   const [input, setInput] = useState('')
+  const [typing, setTyping] = useState(false)
+  const typingTimer = useRef(null)
+  useEffect(() => () => clearTimeout(typingTimer.current), [])
 
   // เจ้าหน้าที่
   const [thread, setThread] = useState(null)
@@ -110,7 +128,7 @@ export default function ChatWidget() {
   useEffect(() => {
     const el = listRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [botMessages, staffMessages, tab, open, handoffDraft])
+  }, [botMessages, staffMessages, tab, open, handoffDraft, typing])
 
   if (hidden) return null
 
@@ -122,15 +140,27 @@ export default function ChatWidget() {
     return { id: botId(), from: 'bot', text, actions, sample: CHATBOT_IS_SAMPLE && faq.sample }
   }
 
+  // แสดงข้อความผู้ใช้ทันที แล้วบอททำท่ากำลังพิมพ์ก่อนตอบ
+  function converse(userText, reply) {
+    setBotMessages((m) => (userText ? [...m, { id: botId(), from: 'user', text: userText }] : m))
+    setTyping(true)
+    clearTimeout(typingTimer.current)
+    typingTimer.current = setTimeout(() => {
+      setTyping(false)
+      setBotMessages((m) => [...m, reply])
+    }, typingDelay(reply.text))
+  }
+
   function askTopic(faq) {
+    if (typing) return
     setHandoffDraft(null)
-    setBotMessages((m) => [...m, { id: botId(), from: 'user', text: faq.title }, answer(faq)])
+    converse(faq.title, answer(faq))
   }
 
   function askText(e) {
     e.preventDefault()
     const text = input.trim()
-    if (!text) return
+    if (!text || typing) return
     setInput('')
     const faq = matchFaq(text)
     const reply = faq
@@ -142,7 +172,7 @@ export default function ChatWidget() {
           actions: [{ label: 'ส่งคำถามนี้ให้เจ้าหน้าที่', handoff: text }],
         }
     if (!faq) setLastUnmatched(text)
-    setBotMessages((m) => [...m, { id: botId(), from: 'user', text }, reply])
+    converse(text, reply)
   }
 
   function go(to) {
@@ -153,12 +183,13 @@ export default function ChatWidget() {
 
   function startHandoff(prefill = '') {
     if (!loggedIn) {
-      setBotMessages((m) => [...m, {
+      if (typing) return
+      converse(null, {
         id: botId(),
         from: 'bot',
         text: 'กรุณาเข้าสู่ระบบก่อน เจ้าหน้าที่จะได้รู้ว่าเป็นใครและตอบกลับในแชทนี้ได้ 🔐',
         actions: [{ label: 'เข้าสู่ระบบ', to: '/login' }, { label: 'สมัครเข้าพัก', to: '/apply' }],
-      }])
+      })
       return
     }
     setTab('bot')
@@ -213,7 +244,7 @@ export default function ChatWidget() {
     <>
       {open && (
         <div
-          className="fixed z-[60] bottom-20 right-4 w-[calc(100vw-2rem)] sm:w-[380px] h-[min(600px,calc(100dvh-7rem))] flex flex-col bg-japandi-bg text-japandi-oak font-body rounded-2xl shadow-2xl border border-japandi-sand overflow-hidden"
+          className="animate-rise-in fixed z-[60] bottom-20 right-4 w-[calc(100vw-2rem)] sm:w-[380px] h-[min(600px,calc(100dvh-7rem))] flex flex-col bg-japandi-bg text-japandi-oak font-body rounded-2xl shadow-2xl border border-japandi-sand overflow-hidden"
           role="dialog"
           aria-label="แชทช่วยเหลือ"
         >
@@ -250,7 +281,7 @@ export default function ChatWidget() {
           {/* ข้อความ */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
             {tab === 'bot' && botMessages.map((m) => (
-              <div key={m.id} className={`flex ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={m.id} className={`flex animate-rise-in ${m.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-line ${
                   m.from === 'user' ? 'bg-japandi-terracotta text-white rounded-br-sm' : 'bg-white border border-japandi-sand rounded-bl-sm'
                 }`}>
@@ -269,6 +300,8 @@ export default function ChatWidget() {
               </div>
             ))}
 
+            {tab === 'bot' && typing && <TypingBubble />}
+
             {tab === 'staff' && !loggedIn && (
               <div className="text-center text-sm text-japandi-muted py-8 space-y-3">
                 <p>เข้าสู่ระบบเพื่อคุยกับเจ้าหน้าที่</p>
@@ -283,12 +316,12 @@ export default function ChatWidget() {
             )}
             {tab === 'staff' && loggedIn && thread && staffMessages.map((m) => (
               m.sender === 'SYSTEM' ? (
-                <div key={m.id} className="mx-2 rounded-xl border border-dashed border-japandi-wood bg-japandi-sand/50 px-3 py-2 text-xs whitespace-pre-line text-japandi-oak">
+                <div key={m.id} className="animate-rise-in mx-2 rounded-xl border border-dashed border-japandi-wood bg-japandi-sand/50 px-3 py-2 text-xs whitespace-pre-line text-japandi-oak">
                   {m.body}
                   <p className="mt-1 text-[10px] text-japandi-muted">ส่งให้เจ้าหน้าที่เมื่อ {timeOf(m.createdAt)}</p>
                 </div>
               ) : (
-                <div key={m.id} className={`flex ${m.sender === 'USER' ? 'justify-end' : 'justify-start'}`}>
+                <div key={m.id} className={`flex animate-rise-in ${m.sender === 'USER' ? 'justify-end' : 'justify-start'}`}>
                   <div className="max-w-[85%]">
                     {m.sender === 'ADMIN' && <p className="text-[11px] text-japandi-muted mb-0.5 ml-1">👩‍💼 {m.authorName}</p>}
                     <div className={`rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-line break-words ${
@@ -336,7 +369,7 @@ export default function ChatWidget() {
               <>
                 <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
                   {FAQS.map((f) => (
-                    <button key={f.id} onClick={() => askTopic(f)} className="shrink-0 text-xs px-3 py-1.5 rounded-full border border-japandi-sand hover:border-japandi-terracotta hover:text-japandi-terracotta">
+                    <button key={f.id} onClick={() => askTopic(f)} disabled={typing} className="shrink-0 disabled:opacity-50 text-xs px-3 py-1.5 rounded-full border border-japandi-sand hover:border-japandi-terracotta hover:text-japandi-terracotta">
                       {f.title}
                     </button>
                   ))}
@@ -349,7 +382,7 @@ export default function ChatWidget() {
                     placeholder="พิมพ์คำถาม เช่น เดินทางมายังไง"
                     className="flex-1 text-sm rounded-full border border-japandi-sand px-4 py-2 focus:outline-none focus:ring-2 focus:ring-japandi-terracotta/30"
                   />
-                  <button className="w-9 h-9 shrink-0 rounded-full bg-japandi-terracotta text-white flex items-center justify-center" aria-label="ส่งคำถาม">
+                  <button disabled={typing} className="w-9 h-9 shrink-0 rounded-full bg-japandi-terracotta text-white flex items-center justify-center disabled:opacity-50" aria-label="ส่งคำถาม">
                     <Send size={16} />
                   </button>
                 </form>

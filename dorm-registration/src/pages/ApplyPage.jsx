@@ -20,7 +20,7 @@ export default function ApplyPage() {
   const closed = reg.status === 'UPCOMING' || reg.status === 'CLOSED'
 
   return (
-    <div className="theme-japandi min-h-screen bg-japandi-bg text-japandi-oak font-body">
+    <div className="theme-japandi min-h-screen bg-japandi-bg text-japandi-oak font-body animate-page-in">
       <SiteHeader />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-8">

@@ -55,6 +55,13 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* คลิกลิงก์ #section (เช่น "ชมอาคาร เทาทอง 1-4") → เลื่อนไปหาแบบนุ่มนวล ไม่กระโดด */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;
