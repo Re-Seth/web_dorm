@@ -480,6 +480,7 @@ require('./studentRoutes')(deps);
 require('./profileRoutes')(deps);
 require('./registrationPeriod')({ app });
 require('./demoLogin')({ app, prisma, signToken, serverError });
+require('./chatRoutes')({ ...deps, io });
 
 // ==========================================
 // 4. Real-time Power Monitoring (Socket.io)

@@ -22,6 +22,8 @@ model User {
   review            Review?
   bookings          Booking[]
   maintenance       MaintenanceRequest[]
+  chatThread        ChatThread?
+  chatMessages      ChatMessage[]
 }
 
 // ข้อมูลการใช้ไฟฟ้า (รองรับ Real-time)
@@ -152,4 +154,34 @@ model TenantProfile {
   keepForNextTerm    Boolean  @default(false) // บันทึกข้อมูลไว้ใช้ลงทะเบียนภาคเรียนถัดไป
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// แชทนิสิต ↔ เจ้าหน้าที่ — 1 คน 1 ห้องแชท เริ่มจากแชทบอทส่งเรื่องต่อ (มีสรุปเรื่องที่นิสิตอยากทราบ)
+model ChatThread {
+  id            Int           @id @default(autoincrement())
+  userId        Int           @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary       String? // สรุปจากแชทบอทล่าสุด (หัวข้อที่ถาม + ข้อมูลการจอง)
+  status        String        @default("OPEN") // OPEN, CLOSED — นิสิตส่งข้อความใหม่จะเปิดเรื่องอีกครั้ง
+  userReadAt    DateTime? // นิสิตอ่านข้อความเจ้าหน้าที่ถึงเวลานี้
+  adminReadAt   DateTime? // เจ้าหน้าที่อ่านข้อความนิสิตถึงเวลานี้
+  lastMessageAt DateTime      @default(now())
+  messages      ChatMessage[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([lastMessageAt])
+}
+
+model ChatMessage {
+  id        Int        @id @default(autoincrement())
+  threadId  Int
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    String // USER, ADMIN, SYSTEM (สรุปเรื่องจากแชทบอท)
+  senderId  Int? // ผู้ส่ง (เจ้าหน้าที่คนไหนตอบ) — ลบบัญชีแล้วข้อความยังอยู่
+  author    User?      @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime   @default(now())
+
+  @@index([threadId, createdAt])
 }

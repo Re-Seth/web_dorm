@@ -22,6 +22,8 @@ import { useSearchParams } from 'react-router-dom'
 import { adminApi, maintenanceApi } from '../../services/api'
 import socket from '../../services/socket'
 import { getLastSeenId, markMaintenanceSeen } from '../../hooks/useMaintenanceAlerts'
+import { useAdminChats } from '../../hooks/useAdminChats'
+import AdminChat from './AdminChat'
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams()
@@ -40,6 +42,7 @@ export default function AdminDashboard() {
   const [notification, setNotification] = useState(null)
   // รายการแจ้งซ่อมที่ id มากกว่านี้ถือว่า "ใหม่" (ยังไม่เคยเปิดดู)
   const [newSinceId, setNewSinceId] = useState(getLastSeenId)
+  const { threads: chatThreads, unreadThreads, refresh: refreshChats } = useAdminChats()
 
   useEffect(() => {
     loadAllData()
@@ -323,6 +326,7 @@ export default function AdminDashboard() {
           { id: 'residents', label: '🛏️ จัดการผู้พัก & ห้อง', count: residents.length },
           { id: 'payments', label: '💳 การชำระเงิน', count: payments.length },
           { id: 'maintenance', label: '🔧 จัดการแจ้งซ่อม', count: maintenanceList.length, alert: newMaintenanceCount },
+          { id: 'chat', label: '💬 แชทนิสิต', count: chatThreads.length, alert: unreadThreads },
           { id: 'users', label: '👤 จัดการสิทธิ์ผู้ใช้', count: usersList.length }
         ].map((tab) => (
           <button
@@ -785,6 +789,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* TAB: CHAT */}
+      {activeTab === 'chat' && <AdminChat threads={chatThreads} refresh={refreshChats} />}
 
       {/* TAB 5: USERS & ROLES */}
       {activeTab === 'users' && (

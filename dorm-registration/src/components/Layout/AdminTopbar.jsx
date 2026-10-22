@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Menu, Wrench } from 'lucide-react'
+import { Bell, Menu, MessageSquare, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useMaintenanceAlerts } from '../../hooks/useMaintenanceAlerts'
+import { useAdminChats } from '../../hooks/useAdminChats'
 
 const STATUS_LABEL = {
   PENDING: 'รอดำเนินการ',
@@ -123,6 +124,26 @@ function MaintenanceBell() {
   )
 }
 
+// ปุ่มแชทนิสิต: ตัวเลข = จำนวนห้องแชทที่มีข้อความยังไม่อ่าน
+function ChatButton() {
+  const navigate = useNavigate()
+  const { unreadThreads } = useAdminChats()
+  return (
+    <button
+      onClick={() => navigate('/app/admin?tab=chat')}
+      className="relative p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+      title="แชทนิสิต"
+    >
+      <MessageSquare className="w-5 h-5" />
+      {unreadThreads > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center">
+          {unreadThreads > 99 ? '99+' : unreadThreads}
+        </span>
+      )}
+    </button>
+  )
+}
+
 // แถบด้านบนของผู้จัดการหอพัก (มีกระดิ่งแจ้งซ่อม Real-time) — มาจากโปรเจกต์ kit
 export default function AdminTopbar({ onMenu }) {
   const { user, logout } = useAuth()
@@ -157,6 +178,7 @@ export default function AdminTopbar({ onMenu }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {isAdmin && <ChatButton />}
         {isAdmin && <MaintenanceBell />}
         <button onClick={handleLogout} className="btn-ghost text-sm px-4 py-2 hover:text-white transition-colors">
           ออกจากระบบ

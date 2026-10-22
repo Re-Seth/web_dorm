@@ -12,9 +12,11 @@ import ProtectedRoute from './components/ProtectedRoute'
 import DormServices from './DormServices' // นำเข้า Component บริการค่าไฟและแจ้งซ่อม
 import AdminRoute from './components/AdminRoute'
 import AdminDashboard from './pages/Admin/AdminDashboard' // ระบบผู้จัดการหอพัก (จากโปรเจกต์ kit)
+import ChatWidget from './components/chat/ChatWidget' // แชทบอท + คุยกับเจ้าหน้าที่ (ทุกหน้า)
 
 export default function App() {
   return (
+    <>
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<AuthPage />} />
@@ -57,5 +59,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ChatWidget />
+    </>
   )
 }

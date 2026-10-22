@@ -26,4 +26,20 @@ export const adminApi = {
   updateUserRole: (id, role) => api.patch(`/api/admin/users/${id}/role`, { role }),
 }
 
+// แชทนิสิต ↔ เจ้าหน้าที่ (backend: chatRoutes.js)
+export const chatApi = {
+  getMine: () => api.get('/api/chat/me'),
+  handoff: (question, topics) => api.post('/api/chat/me/handoff', { question, topics }),
+  send: (body) => api.post('/api/chat/me/messages', { body }),
+  markRead: () => api.post('/api/chat/me/read'),
+}
+
+export const adminChatApi = {
+  list: () => api.get('/api/admin/chats'),
+  get: (id) => api.get(`/api/admin/chats/${id}`),
+  send: (id, body) => api.post(`/api/admin/chats/${id}/messages`, { body }),
+  markRead: (id) => api.post(`/api/admin/chats/${id}/read`),
+  setStatus: (id, status) => api.patch(`/api/admin/chats/${id}/status`, { status }),
+}
+
 export default api
