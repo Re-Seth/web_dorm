@@ -94,7 +94,8 @@ web_dorm/
 │
 ├── docker-compose.yml
 ├── start.js / start.bat            # รันทั้งระบบบนเครื่อง (ไม่ใช้ Docker)
-└── docker-start.bat / docker-stop.bat
+├── docker-start.bat / docker-stop.bat
+└── share-tunnel.bat                # แชร์เว็บให้คนนอกวง LAN เข้าผ่านอินเทอร์เน็ต (Cloudflare Tunnel)
 ```
 
 > รายละเอียด frontend ดูเพิ่มเติมได้ที่ [`dorm-registration/README.md`](./dorm-registration/README.md)
@@ -117,6 +118,10 @@ web_dorm/
   docker compose up -d --build
   ```
 - **หยุดการทำงาน:** ดับเบิลคลิก [`docker-stop.bat`](./docker-stop.bat) หรือรัน `docker compose down`
+- **แชร์ให้คนอื่นเข้าผ่านอินเทอร์เน็ต (เว็บทดสอบ):** ดับเบิลคลิก [`share-tunnel.bat`](./share-tunnel.bat) — สคริปต์จะติดตั้ง `cloudflared` ให้ถ้ายังไม่มี (ถามก่อน), เริ่มระบบถ้ายังไม่รัน, แล้วแสดงลิงก์ `https://….trycloudflare.com` (คัดลอกไว้ใน clipboard ให้) ส่งให้คนอื่นได้เลย
+  - ต้องเปิดเครื่องและหน้าต่างนี้ค้างไว้ตลอดที่แชร์ — ปิดหน้าต่างหรือกด Ctrl+C เพื่อหยุด
+  - เปิดใหม่ทุกครั้งจะได้ลิงก์ใหม่; ไม่ต้องเปิดพอร์ตเราเตอร์ และได้ HTTPS ให้อัตโนมัติ
+  - เหมาะกับเว็บทดสอบเท่านั้น (ถ้าเปิด `DEMO_LOGIN=true` ใครมีลิงก์ก็เข้าเป็น Admin ได้)
 
 #### หรือรันบนเครื่อง (ต้องมี Node.js)
 - **ดับเบิลคลิก:** [`start.bat`](./start.bat) (ถ้าไม่มี Node.js จะสลับไปใช้ Docker ให้อัตโนมัติ)
