@@ -1,12 +1,10 @@
 @echo off
-chcp 65001 >nul
+rem Stop the Docker version of Web Dorm (data stays in the Docker volume). ASCII-only on purpose.
+cd /d "%~dp0"
 echo ========================================================
-echo  🛑 กำลังหยุดการทำงานของระบบ (Web Dorm Docker)...
+echo  Stopping Web Dorm (Docker)...
 echo ========================================================
-echo.
-
 docker compose down
-
 echo.
-echo ✅ หยุดการทำงานของคอนเทนเนอร์ทั้งหมดเรียบร้อยแล้ว
+if errorlevel 1 (echo [X] Could not stop. Is Docker Desktop running?) else (echo [OK] All containers stopped. Your data is kept.)
 pause

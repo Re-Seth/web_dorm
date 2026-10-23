@@ -4,9 +4,12 @@ import {
   ArrowRight, BookmarkCheck, ChevronRight, Dumbbell, FileSignature, Laptop, MapPin, Mars, PencilLine,
   Shirt, ShieldCheck, SquareParking, Venus, Wifi,
 } from 'lucide-react'
+import DormMap from '../components/landing/DormMap'
+import Room3DSection from '../components/landing/Room3DSection'
 import LoginCard from '../components/landing/LoginCard'
 import SiteHeader from '../components/landing/SiteHeader'
 import { BUILDINGS, GENDER_LABEL, ROOM_FILTERS } from '../data/landing'
+import useRegistrationPeriod from '../hooks/useRegistrationPeriod'
 
 const AMENITIES = [
   { icon: Wifi, title: 'Wi-Fi ความเร็วสูง', text: 'ไฟเบอร์ออพติกทุกห้องพัก' },
@@ -60,12 +63,24 @@ export default function Landing() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
   const [activePin, setActivePin] = useState(null)
+  const reg = useRegistrationPeriod()
+  const regBadge = {
+    OPEN: [`เปิดรับลงทะเบียนผู้เช่า${reg.period?.term ? ` ${reg.period.term}` : ''}`, 'bg-japandi-terracotta animate-pulse'],
+    UPCOMING: ['เร็ว ๆ นี้: เปิดรับลงทะเบียนผู้เช่ารอบใหม่', 'bg-amber-500'],
+    CLOSED: ['ปิดรับลงทะเบียนรอบนี้แล้ว — ติดตามรอบถัดไป', 'bg-japandi-muted'],
+  }[reg.status]
 
-  const openApply = (dormId) => navigate(dormId ? `/apply?dorm=${dormId}` : '/apply')
+  // ไปหน้าลงทะเบียนแบบค่อย ๆ จางออก (หน้าใหม่ค่อย ๆ จางเข้าเอง) แทนการเปลี่ยนหน้าทันที
+  const [leaving, setLeaving] = useState(false)
+  const openApply = (dormId) => {
+    if (leaving) return
+    setLeaving(true)
+    setTimeout(() => navigate(dormId ? `/apply?dorm=${dormId}` : '/apply'), 250)
+  }
   const visibleBuildings = BUILDINGS.filter((b) => filter === 'all' || b.roomTypes.includes(filter))
 
   return (
-    <div className="theme-japandi min-h-screen flex flex-col bg-japandi-bg text-japandi-oak font-body selection:bg-japandi-terracotta selection:text-white">
+    <div className={`theme-japandi min-h-screen flex flex-col bg-japandi-bg text-japandi-oak font-body selection:bg-japandi-terracotta selection:text-white transition-opacity duration-300 ${leaving ? 'opacity-0' : 'animate-page-in'}`}>
       <SiteHeader showNav />
 
       <main id="top" className="flex-grow">
@@ -73,10 +88,12 @@ export default function Landing() {
         <section id="about" className="py-12 md:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-japandi-sand text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-japandi-terracotta animate-pulse" />
-                เปิดรับลงทะเบียนผู้เช่าประจำปีการศึกษาใหม่
-              </div>
+              {regBadge && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-japandi-sand text-xs font-medium">
+                  <span className={`w-2 h-2 rounded-full ${regBadge[1]}`} />
+                  {regBadge[0]}
+                </div>
+              )}
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
                 สัมผัสชีวิตสมดุลในสไตล์ <span className="text-japandi-terracotta font-normal italic">Japandi</span>
                 <br />ณ หอพักเทาทอง
@@ -192,6 +209,9 @@ export default function Landing() {
           </div>
         </Reveal>
 
+        {/* 2.5 ห้องพักตัวอย่าง 3 มิติ (หมุนตามการเลื่อนหน้า) */}
+        <Room3DSection />
+
         {/* 3. AMENITIES */}
         <Reveal id="amenities" className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto scroll-mt-20">
           <SectionHeading
@@ -243,41 +263,7 @@ export default function Landing() {
             </div>
 
             <div className="lg:col-span-7">
-              <div className="relative w-full min-h-96 rounded-3xl overflow-hidden border border-japandi-sand shadow-inner bg-[#E5E3DF] p-4 sm:p-6">
-                <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" aria-hidden="true">
-                  <defs>
-                    <pattern id="map-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3D332A" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#map-grid)" />
-                </svg>
-                <div className="relative z-10 grid grid-cols-2 gap-3 sm:gap-4 h-full min-h-[22rem]">
-                  {BUILDINGS.map((b) => {
-                    const g = genderStyle[b.gender]
-                    const active = activePin === b.id
-                    const dimmed = activePin && !active
-                    return (
-                      <div
-                        key={b.id}
-                        className={
-                          `bg-white/90 backdrop-blur p-3 sm:p-4 rounded-2xl border-2 ${g.border} shadow-md flex flex-col justify-between gap-2 transition-all duration-300 ` +
-                          (active ? 'scale-105 shadow-2xl ring-4 ring-japandi-terracotta/40 ' : '') +
-                          (dimmed ? 'opacity-50' : '')
-                        }
-                      >
-                        <div>
-                          <span className={`text-xs font-bold ${g.text} block`}>{b.name} ({GENDER_LABEL[b.gender]})</span>
-                          <p className="text-[11px] text-japandi-muted">{b.mapArea}</p>
-                        </div>
-                        <div className="text-[10px] flex items-center gap-1 font-medium">
-                          <MapPin size={11} className="text-japandi-terracotta shrink-0" /> {b.mapNote}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              <DormMap buildings={BUILDINGS} activeId={activePin} onSelect={setActivePin} />
             </div>
           </div>
         </Reveal>

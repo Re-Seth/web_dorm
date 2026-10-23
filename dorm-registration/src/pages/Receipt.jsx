@@ -3,23 +3,24 @@ import { useRegistration } from '../context/RegistrationContext'
 import { DORMS } from '../data/dorms'
 
 export default function Receipt() {
-  const { payment, booking, student } = useRegistration()
+  const { loading, payment, booking, student } = useRegistration()
   const dorm = DORMS.find((d) => d.id === booking.dormId)
 
+  if (loading) return <p className="text-sm text-bone/50">กำลังโหลด…</p>
   if (payment.status !== 'paid') return <Navigate to="/app/payment" replace />
 
   return (
     <div className="max-w-lg">
       <h1 className="font-display text-2xl font-semibold mb-1">ใบเสร็จรับเงิน</h1>
       <p className="text-bone/50 mb-6">
-        ระบบได้ส่งใบเสร็จนี้ไปยังอีเมลของคุณเรียบร้อยแล้ว
+        เก็บหน้านี้ไว้เป็นหลักฐาน หรือสั่งพิมพ์ได้จากเบราว์เซอร์
       </p>
 
       <div className="card">
         <div className="flex justify-between items-start mb-6 pb-4 border-b border-charcoal-line">
           <div>
             <p className="font-display font-semibold text-gold">หอพักเทาทอง</p>
-            <p className="text-xs text-bone/40">มหาวิทยาลัยบูรพา</p>
+            <p className="text-xs text-bone/40">ใบเสร็จรับเงินค่าลงทะเบียนเข้าพัก</p>
           </div>
           <p className="text-xs font-mono text-bone/50">{payment.receiptNo}</p>
         </div>
@@ -34,8 +35,8 @@ export default function Receipt() {
             <dd>{dorm?.name}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-bone/50">ชั้น</dt>
-            <dd>{booking.floor}</dd>
+            <dt className="text-bone/50">ห้อง</dt>
+            <dd className="font-mono">{booking.roomCode} (ชั้น {booking.floor})</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-bone/50">วิธีชำระเงิน</dt>
@@ -43,7 +44,7 @@ export default function Receipt() {
           </div>
           <div className="flex justify-between">
             <dt className="text-bone/50">วันที่ชำระ</dt>
-            <dd>{new Date(payment.paidAt).toLocaleString('th-TH')}</dd>
+            <dd>{new Date(payment.paidAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</dd>
           </div>
         </dl>
 

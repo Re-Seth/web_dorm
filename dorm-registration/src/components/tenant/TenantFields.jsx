@@ -84,7 +84,7 @@ export function validateSection(section, form) {
       if (!form.firstName.trim() || !form.lastName.trim()) return 'กรุณากรอกชื่อจริงและนามสกุล'
       if (!EMAIL_RE.test(form.email.trim())) return 'กรุณากรอกอีเมลให้ถูกต้อง'
       if (!PHONE_RE.test(form.phone)) return 'กรุณากรอกเบอร์โทรศัพท์มือถือ 10 หลัก (ขึ้นต้นด้วย 0)'
-      if (form.password.length < 6) return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+      if (form.password.length < 8) return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
       return ''
     case 'building':
       if (!form.gender) return 'กรุณาเลือกเพศเพื่อคัดกรองอาคารหอพัก'
@@ -158,7 +158,7 @@ export function AccountFields({ form, set }) {
       <Field label="อีเมล (ใช้เข้าสู่ระบบ) *" htmlFor="tenant-email"><input {...bind('email')} type="email" className={inputCls} placeholder="example@email.com" autoComplete="email" /></Field>
       <Field label="เบอร์โทรศัพท์มือถือ *" htmlFor="tenant-phone"><input {...bind('phone', digits(10))} type="tel" inputMode="numeric" className={inputCls} placeholder="0812345678" autoComplete="tel" /></Field>
       <Field label="ตั้งรหัสผ่าน *" htmlFor="tenant-password" className="sm:col-span-2">
-        <input {...bind('password')} type="password" className={inputCls} placeholder="อย่างน้อย 6 ตัวอักษร" autoComplete="new-password" />
+        <input {...bind('password')} type="password" className={inputCls} placeholder="อย่างน้อย 8 ตัวอักษร" autoComplete="new-password" />
       </Field>
     </div>
   )

@@ -1,4 +1,5 @@
-export default function ConfirmModal({ open, title, description, confirmLabel = 'ยืนยัน', onConfirm, onCancel }) {
+// busy = กำลังส่งคำขอ → ปิดปุ่มทั้งสอง กันกดยืนยันซ้ำ (ดับเบิลคลิกแล้วได้รายการซ้ำ)
+export default function ConfirmModal({ open, title, description, confirmLabel = 'ยืนยัน', busy = false, onConfirm, onCancel }) {
   if (!open) return null
   return (
     <div
@@ -13,11 +14,11 @@ export default function ConfirmModal({ open, title, description, confirmLabel = 
         </h3>
         <p className="text-sm text-bone/70 mb-6">{description}</p>
         <div className="flex gap-3 justify-end">
-          <button className="btn-ghost" onClick={onCancel}>
+          <button className="btn-ghost" onClick={onCancel} disabled={busy}>
             ยกเลิก
           </button>
-          <button className="btn-primary" onClick={onConfirm}>
-            {confirmLabel}
+          <button className="btn-primary" onClick={onConfirm} disabled={busy}>
+            {busy ? 'กำลังดำเนินการ…' : confirmLabel}
           </button>
         </div>
       </div>

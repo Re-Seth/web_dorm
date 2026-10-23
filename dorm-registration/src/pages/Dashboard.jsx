@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, BedDouble, Check, ClipboardPen, CreditCard, LoaderCircle, Star } from 'lucide-react'
 import ProfileManager from '../components/tenant/ProfileManager'
@@ -7,35 +6,19 @@ import TenantPass from '../components/tenant/TenantPass'
 import { useAuth } from '../context/AuthContext'
 import { useRegistration } from '../context/RegistrationContext'
 import useRegistrationPeriod from '../hooks/useRegistrationPeriod'
-import api, { errMsg } from '../studentApi'
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { booking, payment, review } = useRegistration()
+  const { loading, profile: savedProfile, booking, payment, review, refresh } = useRegistration()
   const reg = useRegistrationPeriod()
-  const [profile, setProfile] = useState(undefined) // undefined = กำลังโหลด, null = ยังไม่กรอก
-  const [roomCode, setRoomCode] = useState('')
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([api.get('/api/profile'), api.get('/api/bookings/me').catch(() => ({ data: null }))])
-      .then(([p, b]) => {
-        if (cancelled) return
-        setProfile(p.data)
-        setRoomCode(b.data?.room?.code || '')
-      })
-      .catch((e) => {
-        if (cancelled) return
-        setProfile(null)
-        setError(errMsg(e))
-      })
-    return () => { cancelled = true }
-  }, [])
+  // undefined = กำลังโหลด, null = ยังไม่กรอก — แก้ไขในหน้านี้แล้วอัปเดตทันที และโหลดสถานะใหม่จาก server
+  const profile = loading ? undefined : savedProfile
+  const roomCode = booking.roomCode || ''
+  const setProfile = () => refresh()
 
   const steps = [
     { label: 'กรอกข้อมูลผู้เช่า', done: !!profile, to: '/apply', Icon: ClipboardPen },
-    { label: 'เลือกห้องพัก', done: booking.confirmed || !!roomCode, to: '/app/rooms', Icon: BedDouble },
+    { label: 'เลือกห้องพัก', done: booking.confirmed, to: '/app/rooms', Icon: BedDouble },
     { label: 'ชำระเงิน', done: payment.status === 'paid', to: '/app/payment', Icon: CreditCard },
     { label: 'รีวิว', done: review.submitted, to: '/app/review', Icon: Star },
   ]
@@ -52,8 +35,6 @@ export default function Dashboard() {
 
       {/* ส่วนที่ 1: กำหนดการรับลงทะเบียน */}
       <RegistrationBanner reg={reg} />
-
-      {error && <p role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</p>}
 
       {profile === undefined ? (
         <div className="card flex items-center gap-3 text-sm text-bone/60"><LoaderCircle size={16} className="animate-spin" /> กำลังโหลดข้อมูลผู้เช่า…</div>

@@ -43,6 +43,18 @@ export default {
       borderRadius: {
         card: '10px',
       },
+      // อนิเมชันเปลี่ยนหน้า / ข้อความแชท (ปิดเองเมื่อผู้ใช้ตั้ง prefers-reduced-motion — ดู index.css)
+      keyframes: {
+        'page-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'rise-in': { from: { opacity: '0', transform: 'translateY(10px)' }, to: { opacity: '1', transform: 'none' } },
+        'typing-dot': { '0%, 60%, 100%': { transform: 'none', opacity: '0.4' }, '30%': { transform: 'translateY(-4px)', opacity: '1' } },
+      },
+      animation: {
+        'page-in': 'page-in 0.45s ease-out both',
+        'rise-in': 'rise-in 0.35s ease-out both',
+        'fade-in': 'rise-in 0.3s ease-out both',
+        'typing-dot': 'typing-dot 1.2s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

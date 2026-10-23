@@ -2,13 +2,13 @@
 // Student API — ฝั่งนิสิต: จองห้อง / ชำระเงิน / รีวิว  (ต้องล็อกอิน)
 // + GET /api/admin/reviews สำหรับแอดมินดูรีวิว
 // ==========================================
-const DORM_IDS = ['tt1', 'tt2', 'tt3', 'tt4'];
+const { DORMS } = require('./adminRoutes');
 const { DORMS_BY_GENDER } = require('./profileRoutes');
-const CAPACITY = 4;
+const { getRegistrationPeriod } = require('./registrationPeriod');
+const { clip } = require('./validation');
+const { REGISTRATION_FEE, RoomFullError, DuplicateBookingError, writeBooking, receiptNoFor } = require('./bookings');
 
-module.exports = function registerStudentRoutes({ app, prisma, authenticateToken }) {
-  const fail = (res, err) =>
-    res.status(500).json({ message: 'Internal server error', error: err.message });
+module.exports = function registerStudentRoutes({ app, prisma, authenticateToken, requireAdmin, serverError: fail }) {
 
   const activeBooking = (userId) =>
     prisma.booking.findFirst({
@@ -18,17 +18,18 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
     });
 
   // ---------- จำนวนผู้พักจริงของแต่ละห้องในชั้นที่เลือก (ใช้วาดผังห้อง) ----------
-  // ห้องที่ยังไม่มีในฐานข้อมูล = ยังไม่มีใครจอง (ฝั่ง frontend ถือเป็น 0 คน)
   app.get('/api/rooms/availability', authenticateToken, async (req, res) => {
     try {
       const { dormId } = req.query;
+      const dorm = DORMS.find((d) => d.id === dormId);
       const floor = Number(req.query.floor);
-      if (!DORM_IDS.includes(dormId) || !Number.isInteger(floor) || floor < 1) {
+      if (!dorm || !Number.isInteger(floor) || floor < 1 || floor > dorm.floors) {
         return res.status(400).json({ message: 'ข้อมูลหอพัก/ชั้นไม่ถูกต้อง' });
       }
       const rooms = await prisma.room.findMany({
         where: { dormId, floor },
         include: { bookings: { where: { status: { not: 'CANCELLED' } }, select: { id: true } } },
+        orderBy: { code: 'asc' },
       });
       res.json(rooms.map((r) => ({
         code: r.code,
@@ -40,43 +41,36 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
   });
 
   // ---------- จองห้อง (ถ้ามีการจองที่ยังไม่ชำระ จะเปลี่ยนห้องให้) ----------
+  // กฎ: ต้องอยู่ในรอบเปิดลงทะเบียน / ต้องมีโปรไฟล์ผู้เช่า / อาคารต้องตรงกับเพศ / ห้องต้องมีอยู่จริงตามผัง
+  // ชื่อและเบอร์ติดต่อของการจองดึงจากโปรไฟล์ (ไม่เชื่อค่าที่ client ส่งมา)
   app.post('/api/bookings', authenticateToken, async (req, res) => {
     try {
-      const { dormId, roomCode, studentName, phone, parentName, parentPhone } = req.body;
+      if (!getRegistrationPeriod().isOpen) {
+        return res.status(403).json({ message: 'ขณะนี้อยู่นอกรอบเปิดรับลงทะเบียน จึงยังจองห้องไม่ได้' });
+      }
+      const { dormId } = req.body;
       const floor = Number(req.body.floor);
+      const code = String(req.body.roomCode || '').trim().toUpperCase();
 
-      const dormIndex = DORM_IDS.indexOf(dormId);
-      const code = String(roomCode || '').trim().toUpperCase();
-      if (dormIndex < 0 || !Number.isInteger(floor) || floor < 1) {
-        return res.status(400).json({ message: 'ข้อมูลหอพัก/ชั้นไม่ถูกต้อง' });
-      }
-      // รหัสห้องต้องตรงรูปแบบ: อักษรอาคาร + ชั้น + เลขห้อง 2 หลัก เช่น A101
-      const expected = new RegExp(`^${String.fromCharCode(65 + dormIndex)}${floor}\\d{2}$`);
-      if (!expected.test(code)) {
-        return res.status(400).json({ message: 'รหัสห้องไม่ตรงกับหอพักและชั้นที่เลือก' });
-      }
-      if (!studentName || !String(studentName).trim()) {
-        return res.status(400).json({ message: 'ต้องกรอกข้อมูลนิสิตก่อนจองห้อง' });
-      }
-
-      // ผู้ที่กรอกโปรไฟล์ผู้เช่าแล้ว จองได้เฉพาะอาคารตามเพศ
       const profile = await prisma.tenantProfile.findUnique({ where: { userId: req.user.id } });
-      if (profile && !DORMS_BY_GENDER[profile.gender]?.includes(dormId)) {
+      if (!profile) {
+        return res.status(400).json({ message: 'กรุณากรอกข้อมูลผู้เช่าให้ครบก่อนจองห้อง' });
+      }
+      if (!DORMS_BY_GENDER[profile.gender]?.includes(dormId)) {
         return res.status(400).json({ message: 'อาคารนี้ไม่ตรงกับเพศของผู้สมัคร' });
+      }
+
+      const room = await prisma.room.findUnique({ where: { code } });
+      if (!room || room.dormId !== dormId || room.floor !== floor) {
+        return res.status(404).json({ message: 'ไม่พบห้องนี้ในอาคารและชั้นที่เลือก' });
+      }
+      if (room.status !== 'AVAILABLE') {
+        return res.status(400).json({ message: 'ห้องนี้ปิดปรับปรุงหรือไม่เปิดให้จอง' });
       }
 
       const existing = await activeBooking(req.user.id);
       if (existing?.paymentStatus === 'PAID') {
-        return res.status(400).json({ message: 'คุณจองและชำระเงินเรียบร้อยแล้ว' });
-      }
-
-      const room = await prisma.room.upsert({
-        where: { code },
-        update: {},
-        create: { code, dormId, floor, capacity: CAPACITY },
-      });
-      if (room.status !== 'AVAILABLE') {
-        return res.status(400).json({ message: 'ห้องนี้ไม่เปิดให้จอง' });
+        return res.status(400).json({ message: 'คุณจองและชำระเงินเรียบร้อยแล้ว เปลี่ยนห้องไม่ได้' });
       }
       const taken = await prisma.booking.count({
         where: {
@@ -92,17 +86,23 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
       const data = {
         roomId: room.id,
         userId: req.user.id,
-        studentName: String(studentName).trim(),
+        studentName: clip(`${profile.prefix}${profile.firstName} ${profile.lastName}`, 200),
         studentCode: req.user.username,
-        phone: phone || null,
-        parentName: parentName || null,
-        parentPhone: parentPhone || null,
+        phone: profile.mobile,
+        parentName: profile.emergencyName,
+        parentPhone: profile.emergencyPhone,
       };
-      const booking = existing
-        ? await prisma.booking.update({ where: { id: existing.id }, data })
-        : await prisma.booking.create({ data });
+      const booking = await writeBooking(prisma, { roomId: room.id, userId: req.user.id }, (tx) => existing
+        ? tx.booking.update({ where: { id: existing.id }, data, include: { room: true } })
+        : tx.booking.create({ data: { ...data, paymentAmount: REGISTRATION_FEE }, include: { room: true } }));
       res.status(existing ? 200 : 201).json(booking);
-    } catch (err) { fail(res, err); }
+    } catch (err) {
+      if (err instanceof RoomFullError) return res.status(400).json({ message: 'ห้องนี้เต็มแล้ว กรุณาเลือกห้องอื่น' });
+      if (err instanceof DuplicateBookingError) {
+        return res.status(409).json({ message: 'คุณมีการจองที่กำลังดำเนินการอยู่แล้ว กรุณารีเฟรชหน้าแล้วลองใหม่' });
+      }
+      fail(res, err);
+    }
   });
 
   app.get('/api/bookings/me', authenticateToken, async (req, res) => {
@@ -119,14 +119,16 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
       if (!booking) return res.status(404).json({ message: 'ยังไม่มีการจองห้อง' });
       if (booking.paymentStatus === 'PAID') return res.json(booking); // ซ้ำได้ ไม่เก็บเงินสองรอบ
 
+      const paidAt = new Date();
       const updated = await prisma.booking.update({
         where: { id: booking.id },
+        include: { room: true },
         data: {
           paymentStatus: 'PAID',
           status: 'CONFIRMED',
           paymentMethod: req.body.method === 'bank' ? 'BANK' : 'QR',
-          paidAt: new Date(),
-          receiptNo: 'RCPT-' + Date.now().toString().slice(-8),
+          paidAt,
+          receiptNo: receiptNoFor(booking.id, paidAt),
         },
       });
       res.json(updated);
@@ -137,7 +139,7 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
   app.post('/api/reviews', authenticateToken, async (req, res) => {
     try {
       const rating = Number(req.body.rating);
-      const comment = String(req.body.comment || '').trim().slice(0, 1000);
+      const comment = typeof req.body.comment === 'string' ? clip(req.body.comment, 1000) : '';
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({ message: 'คะแนนต้องเป็น 1-5' });
       }
@@ -150,9 +152,15 @@ module.exports = function registerStudentRoutes({ app, prisma, authenticateToken
     } catch (err) { fail(res, err); }
   });
 
+  // รีวิวของตัวเอง (null = ยังไม่เคยรีวิว)
+  app.get('/api/reviews/me', authenticateToken, async (req, res) => {
+    try {
+      res.json(await prisma.review.findUnique({ where: { userId: req.user.id } }));
+    } catch (err) { fail(res, err); }
+  });
+
   // ---------- แอดมินดูรีวิว ----------
-  app.get('/api/admin/reviews', authenticateToken, async (req, res) => {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Admin only' });
+  app.get('/api/admin/reviews', authenticateToken, requireAdmin, async (req, res) => {
     try {
       const reviews = await prisma.review.findMany({ orderBy: { createdAt: 'desc' } });
       const users = await prisma.user.findMany({

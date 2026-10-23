@@ -11,7 +11,7 @@ const PERKS = [
 // หน้าเข้าสู่ระบบผู้เช่า (สมัครใหม่ที่หน้า /apply)
 export default function AuthPage() {
   return (
-    <div className="theme-japandi min-h-screen bg-japandi-bg text-japandi-oak font-body flex flex-col">
+    <div className="theme-japandi min-h-screen bg-japandi-bg text-japandi-oak font-body flex flex-col animate-page-in">
       <SiteHeader />
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         <div className="relative hidden lg:block">

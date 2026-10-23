@@ -8,38 +8,49 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                Int                  @id @default(autoincrement())
+  username          String               @unique
+  email             String               @unique
+  password          String
+  name              String?
+  role              String               @default("USER")
+  passwordChangedAt DateTime? // token ที่ออกก่อนเวลานี้ใช้ไม่ได้
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  // ลบบัญชี → ลบโปรไฟล์/รีวิว/แจ้งซ่อม (ข้อมูลส่วนบุคคล) ตามไปด้วย; การจองเก็บไว้เป็นประวัติการเงินแต่ตัดการเชื่อมกับผู้ใช้
+  profile           TenantProfile?
+  review            Review?
+  bookings          Booking[]
+  maintenance       MaintenanceRequest[]
+  chatThread        ChatThread?
+  chatMessages      ChatMessage[]
 }
 
 // ข้อมูลการใช้ไฟฟ้า (รองรับ Real-time)
 model PowerUsage {
   id          Int      @id @default(autoincrement())
   roomId      Int
-  voltage     Float    // แรงดันไฟฟ้า (V)
-  current     Float    // กระแสไฟฟ้า (A)
-  power       Float    // กำลังไฟฟ้า (Watt / kW)
-  energyUnits Float    // หน่วยสะสม (kWh)
+  voltage     Float // แรงดันไฟฟ้า (V)
+  current     Float // กระแสไฟฟ้า (A)
+  power       Float // กำลังไฟฟ้า (Watt / kW)
+  energyUnits Float // หน่วยสะสม (kWh)
   recordedAt  DateTime @default(now())
 }
 
 // ข้อมูลแจ้งซ่อม
 model MaintenanceRequest {
   id          Int      @id @default(autoincrement())
-  roomId      Int
+  roomId      Int // Room.id ของห้องที่ผู้แจ้งพักอยู่ (ข้อมูลเก่าอาจเป็นเลขห้องที่พิมพ์เอง)
   userId      Int
-  title       String   // เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว
-  description String   // รายละเอียด
-  imageUrl    String?  // รูปภาพประกอบ
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String // เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว
+  description String // รายละเอียด
+  imageUrl    String? // รูปภาพประกอบ
   status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ==========================================
@@ -51,39 +62,47 @@ model Room {
   id        Int       @id @default(autoincrement())
   dormId    String
   floor     Int
-  code      String    @unique   // เช่น A101
+  code      String    @unique // เช่น A101
   capacity  Int       @default(4)
   status    String    @default("AVAILABLE") // AVAILABLE, MAINTENANCE, CLOSED
   bookings  Booking[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([dormId, floor])
 }
 
 // การจอง + การชำระเงิน
 model Booking {
   id            Int       @id @default(autoincrement())
   roomId        Int
-  room          Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  // ห้ามลบห้องที่มีการจอง (กันประวัติการชำระเงินหาย) — ปิดห้องด้วย status = CLOSED แทน
+  room          Room      @relation(fields: [roomId], references: [id], onDelete: Restrict)
   userId        Int?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   studentName   String
   studentCode   String?
   phone         String?
   parentName    String?
   parentPhone   String?
   status        String    @default("PENDING") // PENDING, CONFIRMED, CANCELLED
-  paymentStatus String    @default("UNPAID")  // UNPAID, PAID
-  paymentAmount Int       @default(999)
+  paymentStatus String    @default("UNPAID") // UNPAID, PAID
+  paymentAmount Int       @default(1999) // ค่าลงทะเบียน (บาท) — backend ใส่ค่าจริงจาก REGISTRATION_FEE ตอนสร้าง
   paymentMethod String?
-  receiptNo     String?
+  receiptNo     String?   @unique
   paidAt        DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([roomId, status])
+  @@index([userId, status])
 }
 
 // รีวิวจากนิสิต (1 คน 1 รีวิว)
 model Review {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
@@ -95,8 +114,9 @@ model Review {
 model TenantProfile {
   id                 Int      @id @default(autoincrement())
   userId             Int      @unique
-  gender             String   // Male, Female
-  dormId             String   // tt1..tt4
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender             String // Male, Female
+  dormId             String // tt1..tt4
   // ข้อมูลตามบัตรประชาชน
   prefix             String
   firstName          String
@@ -106,8 +126,8 @@ model TenantProfile {
   birthDate          DateTime
   address            String
   // การศึกษา / ประเภทผู้เช่า
-  educationLevel     String   // bachelor, master, doctoral, student, general
-  school             String?  // สถานศึกษา หรือสถานที่ทำงาน (บุคคลทั่วไป)
+  educationLevel     String // bachelor, master, doctoral, student, general
+  school             String? // สถานศึกษา หรือสถานที่ทำงาน (บุคคลทั่วไป)
   faculty            String?
   studyYear          String?
   // ช่องทางติดต่อ
@@ -134,4 +154,34 @@ model TenantProfile {
   keepForNextTerm    Boolean  @default(false) // บันทึกข้อมูลไว้ใช้ลงทะเบียนภาคเรียนถัดไป
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// แชทนิสิต ↔ เจ้าหน้าที่ — 1 คน 1 ห้องแชท เริ่มจากแชทบอทส่งเรื่องต่อ (มีสรุปเรื่องที่นิสิตอยากทราบ)
+model ChatThread {
+  id            Int           @id @default(autoincrement())
+  userId        Int           @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary       String? // สรุปจากแชทบอทล่าสุด (หัวข้อที่ถาม + ข้อมูลการจอง)
+  status        String        @default("OPEN") // OPEN, CLOSED — นิสิตส่งข้อความใหม่จะเปิดเรื่องอีกครั้ง
+  userReadAt    DateTime? // นิสิตอ่านข้อความเจ้าหน้าที่ถึงเวลานี้
+  adminReadAt   DateTime? // เจ้าหน้าที่อ่านข้อความนิสิตถึงเวลานี้
+  lastMessageAt DateTime      @default(now())
+  messages      ChatMessage[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([lastMessageAt])
+}
+
+model ChatMessage {
+  id        Int        @id @default(autoincrement())
+  threadId  Int
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    String // USER, ADMIN, SYSTEM (สรุปเรื่องจากแชทบอท)
+  senderId  Int? // ผู้ส่ง (เจ้าหน้าที่คนไหนตอบ) — ลบบัญชีแล้วข้อความยังอยู่
+  author    User?      @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime   @default(now())
+
+  @@index([threadId, createdAt])
 }

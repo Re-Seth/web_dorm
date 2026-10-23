@@ -1,4 +1,10 @@
 node_modules
-.env
-*.db
-*.db-journal
+# ฐานข้อมูลมีข้อมูลส่วนบุคคล — ห้ามติดไปใน image (** = ทุกโฟลเดอร์ย่อย รวม prisma/dev.db)
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/.env*
+!.env.example
+Dockerfile
+.dockerignore

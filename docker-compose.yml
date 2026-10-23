@@ -1,30 +1,58 @@
+# ชื่อโปรเจกต์คงที่ → ใช้ volume ฐานข้อมูลชุดเดิมเสมอ ไม่ว่าโฟลเดอร์จะชื่ออะไร
+# (ถ้าไม่ตั้ง Docker ใช้ชื่อโฟลเดอร์ — โฟลเดอร์ชื่อภาษาไทยจะเริ่มระบบไม่ได้ และย้ายโฟลเดอร์แล้วได้ฐานข้อมูลเปล่า)
+name: web_dorm
+
 services:
   backend:
     build: ./dorm-registration-backend
     container_name: dorm_backend
     environment:
+      NODE_ENV: production
       DATABASE_URL: file:/data/dev.db
-      JWT_SECRET: ${JWT_SECRET:-change_me_please}
+      # ต้องตั้งในไฟล์ .env ข้าง docker-compose.yml (docker-start.bat สร้างค่าสุ่มให้อัตโนมัติ)
+      JWT_SECRET: ${JWT_SECRET:?กรุณาตั้ง JWT_SECRET ในไฟล์ .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      # จำนวน proxy หน้า backend: Cloudflare Tunnel/docker → nginx = 2 → rate limit ใช้ IP จริงของผู้ใช้
+      TRUST_PROXY: ${TRUST_PROXY:-2}
+      DEMO_LOGIN: ${DEMO_LOGIN:-false} # true = แสดงปุ่มบัญชีทดลองบนหน้า login
+      REG_TERM: ${REG_TERM:-}
+      REG_OPEN_AT: ${REG_OPEN_AT:-}
+      REG_CLOSE_AT: ${REG_CLOSE_AT:-}
+      REGISTRATION_FEE: ${REGISTRATION_FEE:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change_me_admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       PORT: 5000
     volumes:
       - dbdata:/data
     ports:
-      - "5000:5000"
+      # เปิดให้เฉพาะเครื่องนี้ (ไว้ทดสอบ API) — ผู้ใช้/เครื่องอื่นเข้าผ่าน frontend ที่พอร์ต 8080
+      - "127.0.0.1:5000:5000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/api/registration-period').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   frontend:
     build:
       context: ./dorm-registration
       args:
-        VITE_API_URL: http://localhost:5000
+        # เรียก API ผ่าน nginx ของ frontend เอง (/_api → backend) — เปิดจากเครื่องอื่นในวง LAN ได้
+        VITE_API_URL: /_api
     container_name: dorm_frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:

@@ -18,6 +18,7 @@ export const BUILDINGS = [
     mapHighlight: 'ติดลานกีฬา',
     mapArea: 'ฝั่งทิศเหนือ / ใกล้ประตูทางเข้า 1',
     mapNote: 'เดินถึงมหาวิทยาลัย 3 นาที',
+    coords: [13.7414, 100.5320],
   },
   {
     id: 'tt2',
@@ -32,6 +33,7 @@ export const BUILDINGS = [
     mapHighlight: 'ใกล้โซนร้านอาหาร',
     mapArea: 'ฝั่งตะวันออก / ใกล้ Community Mall',
     mapNote: 'ใกล้ร้านสะดวกซื้อ',
+    coords: [13.7384, 100.5352],
   },
   {
     id: 'tt3',
@@ -46,6 +48,7 @@ export const BUILDINGS = [
     mapHighlight: 'โซนสวนเงียบสงบ',
     mapArea: 'ฝั่งทิศใต้ / โซนสวนธรรมชาติ',
     mapNote: 'บรรยากาศสงบร่มรื่น',
+    coords: [13.7354, 100.5320],
   },
   {
     id: 'tt4',
@@ -60,8 +63,14 @@ export const BUILDINGS = [
     mapHighlight: 'ตึกใหม่พร้อมฟิตเนส',
     mapArea: 'ฝั่งทิศตะวันตก / อาคารใหม่ล่าสุด',
     mapNote: 'มีฟิตเนสในอาคาร',
+    coords: [13.7384, 100.5288],
   },
 ]
+
+// พิกัดของแต่ละตึก (coords: [ละติจูด, ลองจิจูด]) ตอนนี้เป็นพิกัดตัวอย่าง วางตามทิศใน mapArea
+// ได้พิกัดจริงแล้ว: แก้ coords ของแต่ละตึก และตั้ง MAP_IS_SAMPLE = false เพื่อซ่อนป้าย "พิกัดตัวอย่าง" บนแผนที่
+// (หาพิกัดได้จาก Google Maps: คลิกขวาที่ตึก แล้วกดตัวเลขบรรทัดแรกเพื่อคัดลอก)
+export const MAP_IS_SAMPLE = true
 
 export const ROOM_FILTERS = [
   { id: 'all', label: 'ทั้งหมด' },

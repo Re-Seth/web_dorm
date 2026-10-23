@@ -1,0 +1,5 @@
+# ไฟล์ batch ของ Windows ต้องเป็น CRLF เสมอ (รวมถึงตอน Download ZIP จาก GitHub)
+# ถ้าเป็น LF cmd จะอ่านบางบรรทัดเพี้ยนและสคริปต์พัง
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

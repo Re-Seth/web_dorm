@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import api, { clearToken, getToken } from '../studentApi'
+import { reconnectSocket } from '../services/socket'
 
 const AuthContext = createContext(null)
 
@@ -43,11 +44,13 @@ export function AuthProvider({ children }) {
 
   function login(user) {
     setAuth({ isAuthenticated: true, user })
+    reconnectSocket()
   }
 
   function logout() {
     clearToken()
     setAuth({ isAuthenticated: false, user: null })
+    reconnectSocket()
   }
 
   return (

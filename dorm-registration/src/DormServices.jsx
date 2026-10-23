@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-import axios from 'axios';
-import studentApi from './studentApi';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import studentApi, { errMsg } from './studentApi';
+import socket from './services/socket';
+import { useAuth } from './context/AuthContext';
+import { useRegistration } from './context/RegistrationContext';
 import { Activity, ClipboardList, Gauge, PlugZap, Receipt, Send, Wrench, Zap } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const socket = io(API_BASE);
-const API_URL = `${API_BASE}/api/maintenance`;
 
 const STATUS_BADGE = {
   PENDING: ['รอดำเนินการ', 'bg-amber-50 text-amber-700 border-amber-200'],
@@ -21,29 +19,38 @@ export default function DormServices() {
     power: 0,
     energyUnits: 142.5,
     estimatedCost: 997.5,
-    timestamp: '--:--:--'
+    timestamp: null
   });
 
+  const isAdmin = useAuth().user?.role === 'ADMIN';
+  const { booking } = useRegistration();
   const [requests, setRequests] = useState([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [roomId, setRoomId] = useState(101);
+  const [busy, setBusy] = useState(false);
+  const sendingRef = useRef(false); // กันดับเบิลคลิก (state อัปเดตไม่ทันระหว่างคลิกติดกัน)
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
-    socket.on('power_update', (data) => {
-      setPower(data);
-    });
+    const onPower = (data) => setPower(data);
+    socket.on('power_update', onPower);
+    // ผู้จัดการเปลี่ยนสถานะรายการของเรา → อัปเดตทันทีโดยไม่ต้องรีเฟรช
+    socket.on('maintenance_updated', fetchRequests);
+    socket.on('maintenance_created', fetchRequests);
 
     fetchRequests();
 
     return () => {
-      socket.off('power_update');
+      socket.off('power_update', onPower);
+      socket.off('maintenance_updated', fetchRequests);
+      socket.off('maintenance_created', fetchRequests);
     };
   }, []);
 
   const fetchRequests = async () => {
     try {
-      const res = await axios.get(API_URL);
+      // backend ส่งเฉพาะรายการที่ผู้ใช้คนนี้แจ้ง (Admin เห็นทั้งหมด)
+      const res = await studentApi.get('/api/maintenance');
       setRequests(res.data);
     } catch (err) {
       console.error(err);
@@ -52,17 +59,28 @@ export default function DormServices() {
 
   const handleCreateRequest = async (e) => {
     e.preventDefault();
-    if (!title || !description) return;
+    if (!title.trim() || !description.trim() || sendingRef.current) return;
+    sendingRef.current = true;
+    setBusy(true);
+    setFormError('');
     try {
-      // แนบ token ไปด้วย ผู้จัดการหอพักจะเห็นชื่อผู้แจ้ง
-      await studentApi.post('/api/maintenance', { roomId, title, description });
+      // ห้องที่แจ้งซ่อม = ห้องที่จองไว้ (backend ใช้ห้องจากการจองของผู้แจ้งเอง)
+      await studentApi.post('/api/maintenance', { title, description });
       setTitle('');
       setDescription('');
       fetchRequests();
     } catch (err) {
-      alert('เกิดข้อผิดพลาดในการส่งข้อมูล');
+      setFormError(errMsg(err));
+    } finally {
+      sendingRef.current = false;
+      setBusy(false);
     }
   };
+
+  // เวลาจากเซิร์ฟเวอร์เป็น ISO → แสดงเป็นเวลาไทย
+  const liveTime = power.timestamp
+    ? new Date(power.timestamp).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' })
+    : '--:--:--';
 
   const getStatusBadge = (status) => {
     const badge = STATUS_BADGE[status];
@@ -81,7 +99,7 @@ export default function DormServices() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <span className="text-xs font-semibold uppercase tracking-widest text-gold">Dorm Services</span>
-        <h1 className="font-display text-2xl sm:text-3xl font-bold">ค่าไฟ & แจ้งซ่อม <span className="text-bone/50 font-normal text-lg">(ห้อง {roomId})</span></h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold">ค่าไฟ & แจ้งซ่อม {booking.roomCode && <span className="text-bone/50 font-normal text-lg">(ห้อง {booking.roomCode})</span>}</h1>
       </div>
 
       {/* มิเตอร์ไฟ Real-time */}
@@ -90,7 +108,7 @@ export default function DormServices() {
         <div className="relative flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="font-display text-lg font-bold text-white flex items-center gap-2"><PlugZap size={20} className="text-japandi-wood" /> การใช้ไฟฟ้าแบบ Real-time</h2>
           <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live ({power.timestamp})
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live ({liveTime})
           </span>
         </div>
         <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -107,23 +125,33 @@ export default function DormServices() {
         {/* แบบฟอร์มแจ้งซ่อม */}
         <section className="card">
           <h3 className="font-display text-lg font-bold mb-5 flex items-center gap-2"><Wrench size={18} className="text-gold" /> แบบฟอร์มแจ้งซ่อม</h3>
+          {isAdmin ? (
+            <p className="text-sm text-bone/60">ผู้จัดการหอพักจัดการรายการแจ้งซ่อมได้ที่ <Link to="/app/admin?tab=maintenance" className="underline">ระบบจัดการหอพัก</Link></p>
+          ) : !booking.confirmed ? (
+            <div className="space-y-3">
+              <p className="text-sm text-bone/60">ต้องจองห้องพักก่อนจึงจะแจ้งซ่อมได้ (ระบบใช้ห้องที่คุณจองไว้)</p>
+              <Link to="/app/rooms" className="btn-primary inline-block">ไปเลือกห้องพัก →</Link>
+            </div>
+          ) : (
           <form onSubmit={handleCreateRequest} className="space-y-4">
             <div>
-              <label className="field-label" htmlFor="svc-room">หมายเลขห้อง</label>
-              <input id="svc-room" type="number" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="field" />
+              <p className="field-label">ห้องที่แจ้งซ่อม</p>
+              <p className="font-mono font-semibold">{booking.roomCode}</p>
             </div>
             <div>
               <label className="field-label" htmlFor="svc-title">อุปกรณ์ที่ชำรุด</label>
-              <input id="svc-title" type="text" placeholder="เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว" value={title} onChange={(e) => setTitle(e.target.value)} className="field" required />
+              <input id="svc-title" type="text" placeholder="เช่น แอร์ไม่เย็น, ก๊อกน้ำรั่ว" value={title} onChange={(e) => setTitle(e.target.value)} className="field" maxLength={200} required />
             </div>
             <div>
               <label className="field-label" htmlFor="svc-desc">รายละเอียดอาการ</label>
-              <textarea id="svc-desc" placeholder="ระบุอาการเพิ่มเติม..." value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="field" required />
+              <textarea id="svc-desc" placeholder="ระบุอาการเพิ่มเติม..." value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="field" maxLength={2000} required />
             </div>
-            <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
-              <Send size={15} /> ส่งแจ้งซ่อม
+            {formError && <p role="alert" className="text-sm text-room-full">{formError}</p>}
+            <button type="submit" disabled={busy} className="btn-primary w-full flex items-center justify-center gap-2">
+              <Send size={15} /> {busy ? 'กำลังส่ง…' : 'ส่งแจ้งซ่อม'}
             </button>
           </form>
+          )}
         </section>
 
         {/* รายการแจ้งซ่อม */}
@@ -138,7 +166,7 @@ export default function DormServices() {
               {requests.map((item) => (
                 <article key={item.id} className="rounded-2xl border border-charcoal-line bg-charcoal p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className="text-sm font-bold">ห้อง {item.roomId} - {item.title}</h4>
+                    <h4 className="text-sm font-bold break-words min-w-0">{item.roomCode ? `ห้อง ${item.roomCode} - ` : ''}{item.title}</h4>
                     {getStatusBadge(item.status)}
                   </div>
                   <p className="text-sm text-bone/70 leading-relaxed">{item.description}</p>

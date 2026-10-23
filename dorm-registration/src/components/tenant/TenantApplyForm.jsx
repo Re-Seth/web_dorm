@@ -34,7 +34,7 @@ function SocialButtons() {
 // ฟอร์มลงทะเบียนผู้เช่า 6 ขั้น (หน้า /apply) — ยังไม่มีบัญชีจะสร้างบัญชีให้ในขั้นแรก
 export default function TenantApplyForm({ preset, onDone, canSubmit = true }) {
   const { isAuthenticated, user, login } = useAuth()
-  const { updatePerson, markInfoCompleted } = useRegistration()
+  const { refresh } = useRegistration()
   const navigate = useNavigate()
 
   const [step, setStep] = useState(1)
@@ -86,8 +86,9 @@ export default function TenantApplyForm({ preset, onDone, canSubmit = true }) {
     try {
       await api.post('/register', { username: email, email, password: form.password, name: `${form.firstName.trim()} ${form.lastName.trim()}` })
     } catch (e) {
-      if (e.response?.status === 400) throw new Error('อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเลือก "มีบัญชีแล้ว เข้าสู่ระบบ"')
-      throw new Error(errMsg(e))
+      // 400 มีหลายสาเหตุ (อีเมลซ้ำ / รหัสผ่านยาวเกิน ฯลฯ) → ใช้ข้อความจาก backend
+      const msg = errMsg(e)
+      throw new Error(/มีบัญชีอยู่แล้ว/.test(msg) ? `${msg} กรุณาเลือก "มีบัญชีแล้ว เข้าสู่ระบบ"` : msg)
     }
     const { data } = await api.post('/login', { username: email, password: form.password })
     signIn(data)
@@ -144,14 +145,7 @@ export default function TenantApplyForm({ preset, onDone, canSubmit = true }) {
     setBusy(true)
     try {
       const { data: saved } = await api.put('/api/profile', formToPayload(form))
-      updatePerson('student', {
-        prefix: saved.prefix,
-        firstName: saved.firstName,
-        lastName: saved.lastName,
-        citizenId: saved.citizenId,
-        phone: saved.mobile,
-      })
-      markInfoCompleted()
+      await refresh()
       onDone?.(saved)
     } catch (err) {
       setError(errMsg(err))
